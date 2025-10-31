@@ -7,6 +7,7 @@
         "start": "node server.js",
         "server": "nodemon server.js",
         "seed:vendors": "node scripts/createVendors.js",
+        "seed:products": "node scripts/createProducts.js",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "Deepansh Agarwal",

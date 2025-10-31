@@ -1,386 +1,210 @@
-import VendorProduct from "../models/vendorProduct.model.js";
-import Product from "../models/product.model.js";
+import {
+    fetchVendorInventory,
+    addProductToInventory,
+    updateProductInventory,
+    removeFromInventory,
+    fetchSingleProduct,
+    updateStockLevels,
+    fetchLowStockItems,
+    processBatchUpdate,
+} from "../services/inventory.service.js";
 import apiResponse from "../utils/response.util.js";
 import logger from "../utils/logger.util.js";
 
-/**
- * @desc    Get vendor inventory
- * @route   GET /api/inventory
- * @access  Private (Vendor)
- */
-const getVendorInventory = async (req, res, next) => {
+// Get inventory
+const getInventory = async (req, res) => {
     try {
-        const { page = 1, limit = 20, status, search } = req.query;
-
-        const query = { vendor: req.vendor._id };
-
-        if (status) {
-            query["availability.availabilityStatus"] = status;
-        }
-
-        let vendorProducts = await VendorProduct.find(query)
-            .populate("product", "name brand category images")
-            .populate("product.category", "name")
-            .limit(limit * 1)
-            .skip((page - 1) * limit)
-            .sort({ updatedAt: -1 });
-
-        // Filter by search if provided
-        if (search) {
-            vendorProducts = vendorProducts.filter(
-                (vp) =>
-                    vp.product.name
-                        .toLowerCase()
-                        .includes(search.toLowerCase()) ||
-                    vp.product.brand
-                        .toLowerCase()
-                        .includes(search.toLowerCase())
-            );
-        }
-
-        const total = await VendorProduct.countDocuments(query);
-
+        const inventory = await fetchVendorInventory(req.user.id);
         return apiResponse.success(
             res,
             "Inventory retrieved successfully",
-            vendorProducts,
-            {
-                pagination: {
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    total,
-                    pages: Math.ceil(total / limit),
-                },
-            }
+            inventory
         );
     } catch (error) {
-        logger.error("Get vendor inventory error:", error.message);
-        next(error);
+        logger.error("Get inventory controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        return apiResponse.serverError(res, "Failed to retrieve inventory");
     }
 };
 
-/**
- * @desc    Add product to inventory
- * @route   POST /api/inventory/add-product
- * @access  Private (Vendor)
- */
-const addProductToInventory = async (req, res, next) => {
+// Add product to inventory
+const addProduct = async (req, res) => {
     try {
-        const { productId, pricing, inventory, expiryTracking, settings } =
-            req.body;
-
-        // Check if product exists
-        const product = await Product.findById(productId);
-        if (!product) {
-            return apiResponse.notFound(res, "Product not found");
-        }
-
-        // Check if vendor already has this product
-        const existingVendorProduct = await VendorProduct.findOne({
-            vendor: req.vendor._id,
-            product: productId,
-        });
-
-        if (existingVendorProduct) {
-            return apiResponse.conflict(
-                res,
-                "Product already exists in your inventory"
-            );
-        }
-
-        // Create vendor product
-        const vendorProduct = await VendorProduct.create({
-            vendor: req.vendor._id,
-            product: productId,
-            pricing,
-            inventory,
-            expiryTracking,
-            settings,
-        });
-
-        await vendorProduct.populate("product", "name brand category");
-
-        logger.info(
-            `Product added to inventory: ${product.name} by vendor ${req.vendor.businessName}`
-        );
-
+        const newProduct = await addProductToInventory(req.user.id, req.body);
         return apiResponse.created(
             res,
             "Product added to inventory successfully",
-            vendorProduct
+            newProduct
         );
     } catch (error) {
-        logger.error("Add product to inventory error:", error.message);
-        next(error);
+        logger.error("Add product controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        if (error.message.includes("already exists")) {
+            return apiResponse.conflict(res, error.message);
+        }
+
+        if (error.name === "ValidationError") {
+            return apiResponse.badRequest(res, error.message);
+        }
+
+        return apiResponse.serverError(res, "Failed to add product");
     }
 };
 
-/**
- * @desc    Update product inventory
- * @route   PUT /api/inventory/product/:productId
- * @access  Private (Vendor)
- */
-const updateProductInventory = async (req, res, next) => {
+// Update product inventory
+const updateProduct = async (req, res) => {
     try {
-        const { productId } = req.params;
-        const updateData = req.body;
-
-        const vendorProduct = await VendorProduct.findOneAndUpdate(
-            { vendor: req.vendor._id, product: productId },
-            updateData,
-            { new: true, runValidators: true }
-        ).populate("product", "name brand category");
-
-        if (!vendorProduct) {
-            return apiResponse.notFound(
-                res,
-                "Product not found in your inventory"
-            );
-        }
-
-        logger.info(
-            `Inventory updated for product: ${vendorProduct.product.name}`
+        const updatedProduct = await updateProductInventory(
+            req.params.id,
+            req.user.id,
+            req.body
         );
-
         return apiResponse.success(
             res,
-            "Inventory updated successfully",
-            vendorProduct
+            "Product updated successfully",
+            updatedProduct
         );
     } catch (error) {
-        logger.error("Update product inventory error:", error.message);
-        next(error);
+        logger.error("Update product controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        if (error.name === "ValidationError") {
+            return apiResponse.badRequest(res, error.message);
+        }
+
+        return apiResponse.serverError(res, "Failed to update product");
     }
 };
 
-/**
- * @desc    Remove product from inventory
- * @route   DELETE /api/inventory/product/:productId
- * @access  Private (Vendor)
- */
-const removeProductFromInventory = async (req, res, next) => {
+// Remove product from inventory
+const removeProduct = async (req, res) => {
     try {
-        const { productId } = req.params;
-
-        const vendorProduct = await VendorProduct.findOneAndUpdate(
-            { vendor: req.vendor._id, product: productId },
-            { isActive: false },
-            { new: true }
-        );
-
-        if (!vendorProduct) {
-            return apiResponse.notFound(
-                res,
-                "Product not found in your inventory"
-            );
-        }
-
-        logger.info(
-            `Product removed from inventory: ${productId} by vendor ${req.vendor.businessName}`
-        );
-
+        await removeFromInventory(req.params.id, req.user.id);
         return apiResponse.success(
             res,
-            "Product removed from inventory successfully"
+            "Product removed from inventory successfully",
+            null
         );
     } catch (error) {
-        logger.error("Remove product from inventory error:", error.message);
-        next(error);
+        logger.error("Remove product controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        return apiResponse.serverError(res, "Failed to remove product");
     }
 };
 
-/**
- * @desc    Add stock for a product
- * @route   POST /api/inventory/add-stock
- * @access  Private (Vendor)
- */
-const addStock = async (req, res, next) => {
+// Get single product from inventory
+const getProduct = async (req, res) => {
     try {
-        const { productId, quantity, batch } = req.body;
-
-        const vendorProduct = await VendorProduct.findOne({
-            vendor: req.vendor._id,
-            product: productId,
-        });
-
-        if (!vendorProduct) {
-            return apiResponse.notFound(
-                res,
-                "Product not found in your inventory"
-            );
-        }
-
-        // Add to current stock
-        vendorProduct.inventory.currentStock += quantity;
-
-        // Add batch if expiry tracking is enabled
-        if (vendorProduct.expiryTracking.hasExpiry && batch) {
-            vendorProduct.expiryTracking.batches.push({
-                ...batch,
-                quantity,
-            });
-        }
-
-        await vendorProduct.save();
-
-        logger.info(`Stock added: ${quantity} units for product ${productId}`);
-
+        const product = await fetchSingleProduct(req.params.id, req.user.id);
         return apiResponse.success(
             res,
-            "Stock added successfully",
-            vendorProduct
+            "Product retrieved successfully",
+            product
         );
     } catch (error) {
-        logger.error("Add stock error:", error.message);
-        next(error);
-    }
-};
+        logger.error("Get product controller error:", error.message);
 
-/**
- * @desc    Update batch information
- * @route   PUT /api/inventory/batch/:batchId
- * @access  Private (Vendor)
- */
-const updateBatch = async (req, res, next) => {
-    try {
-        const { batchId } = req.params;
-        const updateData = req.body;
-
-        const vendorProduct = await VendorProduct.findOne({
-            vendor: req.vendor._id,
-            "expiryTracking.batches._id": batchId,
-        });
-
-        if (!vendorProduct) {
-            return apiResponse.notFound(res, "Batch not found");
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
         }
 
-        // Update the specific batch
-        const batch = vendorProduct.expiryTracking.batches.id(batchId);
-        Object.assign(batch, updateData);
-
-        await vendorProduct.save();
-
-        logger.info(`Batch updated: ${batchId}`);
-
-        return apiResponse.success(res, "Batch updated successfully", batch);
-    } catch (error) {
-        logger.error("Update batch error:", error.message);
-        next(error);
+        return apiResponse.serverError(res, "Failed to retrieve product");
     }
 };
 
-/**
- * @desc    Get near expiry products
- * @route   GET /api/inventory/near-expiry
- * @access  Private (Vendor)
- */
-const getNearExpiryProducts = async (req, res, next) => {
+// Update stock levels for a product
+const updateStock = async (req, res) => {
     try {
-        const nearExpiryProducts = await VendorProduct.find({
-            vendor: req.vendor._id,
-            "expiryTracking.batches.isNearExpiry": true,
-            "expiryTracking.batches.remainingQuantity": { $gt: 0 },
-        }).populate("product", "name brand images");
-
+        const updatedProduct = await updateStockLevels(
+            req.params.id,
+            req.user.id,
+            req.body
+        );
         return apiResponse.success(
             res,
-            "Near expiry products retrieved successfully",
-            nearExpiryProducts
+            "Stock updated successfully",
+            updatedProduct
         );
     } catch (error) {
-        logger.error("Get near expiry products error:", error.message);
-        next(error);
+        logger.error("Update stock controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        if (error.name === "ValidationError") {
+            return apiResponse.badRequest(res, error.message);
+        }
+
+        return apiResponse.serverError(res, "Failed to update stock");
     }
 };
 
-/**
- * @desc    Get out of stock products
- * @route   GET /api/inventory/out-of-stock
- * @access  Private (Vendor)
- */
-const getOutOfStockProducts = async (req, res, next) => {
+// Get low stock items
+const getLowStock = async (req, res) => {
     try {
-        const outOfStockProducts = await VendorProduct.find({
-            vendor: req.vendor._id,
-            "availability.isOutOfStock": true,
-        }).populate("product", "name brand images");
-
+        const lowStockItems = await fetchLowStockItems(req.user.id);
         return apiResponse.success(
             res,
-            "Out of stock products retrieved successfully",
-            outOfStockProducts
+            "Low stock items retrieved successfully",
+            lowStockItems
         );
     } catch (error) {
-        logger.error("Get out of stock products error:", error.message);
-        next(error);
+        logger.error("Get low stock controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        return apiResponse.serverError(
+            res,
+            "Failed to retrieve low stock items"
+        );
     }
 };
 
-/**
- * @desc    Bulk update inventory
- * @route   POST /api/inventory/bulk-update
- * @access  Private (Vendor)
- */
-const bulkUpdateInventory = async (req, res, next) => {
+// Batch update multiple products
+const batchUpdate = async (req, res) => {
     try {
-        const { updates } = req.body; // Array of { productId, updateData }
-
-        if (!Array.isArray(updates) || updates.length === 0) {
-            return apiResponse.badRequest(res, "Updates array is required");
-        }
-
-        const results = [];
-
-        for (const update of updates) {
-            try {
-                const vendorProduct = await VendorProduct.findOneAndUpdate(
-                    { vendor: req.vendor._id, product: update.productId },
-                    update.updateData,
-                    { new: true, runValidators: true }
-                );
-
-                if (vendorProduct) {
-                    results.push({
-                        productId: update.productId,
-                        success: true,
-                        data: vendorProduct,
-                    });
-                } else {
-                    results.push({
-                        productId: update.productId,
-                        success: false,
-                        error: "Product not found",
-                    });
-                }
-            } catch (error) {
-                results.push({
-                    productId: update.productId,
-                    success: false,
-                    error: error.message,
-                });
-            }
-        }
-
-        logger.info(
-            `Bulk inventory update completed: ${results.length} items processed`
-        );
-
-        return apiResponse.success(res, "Bulk update completed", results);
+        const results = await processBatchUpdate(req.user.id, req.body);
+        return apiResponse.success(res, "Batch update completed", results);
     } catch (error) {
-        logger.error("Bulk update inventory error:", error.message);
-        next(error);
+        logger.error("Batch update controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        if (error.name === "ValidationError") {
+            return apiResponse.badRequest(res, error.message);
+        }
+
+        return apiResponse.serverError(res, "Failed to process batch update");
     }
 };
 
 export {
-    getVendorInventory,
-    addProductToInventory,
-    updateProductInventory,
-    removeProductFromInventory,
-    addStock,
-    updateBatch,
-    getNearExpiryProducts,
-    getOutOfStockProducts,
-    bulkUpdateInventory,
+    getInventory,
+    addProduct,
+    updateProduct,
+    removeProduct,
+    getProduct,
+    updateStock,
+    getLowStock,
+    batchUpdate,
 };
