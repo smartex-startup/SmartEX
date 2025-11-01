@@ -2,6 +2,7 @@ import VendorProduct from "../models/vendorProduct.model.js";
 import Product from "../models/product.model.js";
 import Vendor from "../models/vendor.model.js";
 import logger from "../utils/logger.util.js";
+import { updateAllBatchesExpiry } from "../utils/expiryCalculator.util.js";
 
 // Fetch vendor inventory
 const fetchVendorInventory = async (userId) => {
@@ -503,6 +504,316 @@ const processBatchUpdate = async (userId, batchData) => {
     }
 };
 
+// Fetch near-expiry products for vendor
+const fetchNearExpiryProducts = async (userId) => {
+    try {
+        // Get vendor from user
+        const vendor = await Vendor.findOne({ userId });
+        if (!vendor) {
+            throw new Error("Vendor not found");
+        }
+
+        // Find products with near-expiry batches
+        const nearExpiryProducts = await VendorProduct.find({
+            vendor: vendor._id,
+            "expiryTracking.hasExpiry": true,
+            "expiryTracking.batches": {
+                $elemMatch: {
+                    isNearExpiry: true,
+                    remainingQuantity: { $gt: 0 },
+                },
+            },
+            isActive: true,
+        })
+            .populate("product", "name brand category images")
+            .sort({ "expiryTracking.batches.daysToExpiry": 1 }); // Sort by most urgent first
+
+        // Calculate summary
+        let totalNearExpiryProducts = 0;
+        let totalNearExpiryStock = 0;
+        let totalDiscountValue = 0;
+
+        const processedProducts = nearExpiryProducts
+            .map((vendorProduct) => {
+                const nearExpiryBatches =
+                    vendorProduct.expiryTracking.batches.filter(
+                        (batch) =>
+                            batch.isNearExpiry && batch.remainingQuantity > 0
+                    );
+
+                if (nearExpiryBatches.length > 0) {
+                    totalNearExpiryProducts++;
+
+                    const batchStockTotal = nearExpiryBatches.reduce(
+                        (sum, batch) => sum + batch.remainingQuantity,
+                        0
+                    );
+                    totalNearExpiryStock += batchStockTotal;
+
+                    // Calculate discount value
+                    const originalValue =
+                        batchStockTotal * vendorProduct.pricing.finalPrice;
+                    const maxDiscount = Math.max(
+                        ...nearExpiryBatches.map(
+                            (b) => b.nearExpiryDiscount || 0
+                        )
+                    );
+                    const discountValue = originalValue * (maxDiscount / 100);
+                    totalDiscountValue += discountValue;
+
+                    return {
+                        _id: vendorProduct._id,
+                        product: vendorProduct.product,
+                        pricing: vendorProduct.pricing,
+                        nearExpiryBatches: nearExpiryBatches.map((batch) => ({
+                            batchNumber: batch.batchNumber,
+                            expiryDate: batch.expiryDate,
+                            daysToExpiry: batch.daysToExpiry,
+                            quantity: batch.remainingQuantity,
+                            nearExpiryDiscount: batch.nearExpiryDiscount,
+                            discountedPrice:
+                                vendorProduct.pricing.finalPrice *
+                                (1 - batch.nearExpiryDiscount / 100),
+                        })),
+                        totalNearExpiryStock: batchStockTotal,
+                        discountValue,
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean);
+
+        logger.info(
+            `Near-expiry products fetched for vendor: ${vendor.businessName} - ${totalNearExpiryProducts} products`
+        );
+
+        return {
+            products: processedProducts,
+            summary: {
+                totalNearExpiryProducts,
+                totalNearExpiryStock,
+                totalDiscountValue: Math.round(totalDiscountValue * 100) / 100,
+                averageDiscount:
+                    processedProducts.length > 0
+                        ? Math.round(
+                              (totalDiscountValue /
+                                  (totalNearExpiryStock *
+                                      (processedProducts[0]?.pricing
+                                          ?.finalPrice || 0))) *
+                                  100
+                          )
+                        : 0,
+            },
+        };
+    } catch (error) {
+        logger.error(
+            `Fetch near-expiry products error for user ${userId}:`,
+            error.message
+        );
+        throw error;
+    }
+};
+
+// Fetch expired products for vendor
+const fetchExpiredProducts = async (userId) => {
+    try {
+        // Get vendor from user
+        const vendor = await Vendor.findOne({ userId });
+        if (!vendor) {
+            throw new Error("Vendor not found");
+        }
+
+        // Find products with expired batches
+        const expiredProducts = await VendorProduct.find({
+            vendor: vendor._id,
+            "expiryTracking.hasExpiry": true,
+            "expiryTracking.batches": {
+                $elemMatch: {
+                    isExpired: true,
+                    remainingQuantity: { $gt: 0 },
+                },
+            },
+            isActive: true,
+        })
+            .populate("product", "name brand category images")
+            .sort({ "expiryTracking.batches.expiryDate": 1 }); // Sort by oldest expiry first
+
+        // Calculate summary
+        let totalExpiredProducts = 0;
+        let totalExpiredStock = 0;
+        let totalLossValue = 0;
+
+        const processedProducts = expiredProducts
+            .map((vendorProduct) => {
+                const expiredBatches =
+                    vendorProduct.expiryTracking.batches.filter(
+                        (batch) =>
+                            batch.isExpired && batch.remainingQuantity > 0
+                    );
+
+                if (expiredBatches.length > 0) {
+                    totalExpiredProducts++;
+
+                    const batchStockTotal = expiredBatches.reduce(
+                        (sum, batch) => sum + batch.remainingQuantity,
+                        0
+                    );
+                    totalExpiredStock += batchStockTotal;
+
+                    // Calculate loss value (at cost price)
+                    const lossValue =
+                        batchStockTotal * vendorProduct.pricing.costPrice;
+                    totalLossValue += lossValue;
+
+                    return {
+                        _id: vendorProduct._id,
+                        product: vendorProduct.product,
+                        pricing: vendorProduct.pricing,
+                        expiredBatches: expiredBatches.map((batch) => ({
+                            batchNumber: batch.batchNumber,
+                            expiryDate: batch.expiryDate,
+                            daysExpired: Math.abs(batch.daysToExpiry),
+                            quantity: batch.remainingQuantity,
+                        })),
+                        totalExpiredStock: batchStockTotal,
+                        lossValue,
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean);
+
+        logger.info(
+            `Expired products fetched for vendor: ${vendor.businessName} - ${totalExpiredProducts} products`
+        );
+
+        return {
+            products: processedProducts,
+            summary: {
+                totalExpiredProducts,
+                totalExpiredStock,
+                totalLossValue: Math.round(totalLossValue * 100) / 100,
+            },
+        };
+    } catch (error) {
+        logger.error(
+            `Fetch expired products error for user ${userId}:`,
+            error.message
+        );
+        throw error;
+    }
+};
+
+// Update product batches
+const updateProductBatches = async (vendorProductId, userId, updateData) => {
+    try {
+        // Get vendor from user
+        const vendor = await Vendor.findOne({ userId });
+        if (!vendor) {
+            throw new Error("Vendor not found");
+        }
+
+        // Find the vendor product
+        const vendorProduct = await VendorProduct.findOne({
+            _id: vendorProductId,
+            vendor: vendor._id,
+        });
+
+        if (!vendorProduct) {
+            throw new Error("Product not found in your inventory");
+        }
+
+        // Update expiry tracking if provided
+        if (updateData.expiryTracking) {
+            if (updateData.expiryTracking.hasExpiry !== undefined) {
+                vendorProduct.expiryTracking.hasExpiry =
+                    updateData.expiryTracking.hasExpiry;
+            }
+
+            if (updateData.expiryTracking.batches) {
+                const newBatches = updateData.expiryTracking.batches;
+
+                // Handle batch updates intelligently
+                if (updateData.replaceAllBatches === true) {
+                    // Option 1: Replace all batches (explicit choice)
+                    vendorProduct.expiryTracking.batches = newBatches;
+                    logger.info(
+                        `Replaced all batches for product ${vendorProductId}`
+                    );
+                } else {
+                    // Option 2: Add/Update batches (default behavior)
+                    const existingBatches =
+                        vendorProduct.expiryTracking.batches || [];
+
+                    newBatches.forEach((newBatch) => {
+                        // Find existing batch with same batchNumber
+                        const existingIndex = existingBatches.findIndex(
+                            (batch) =>
+                                batch.batchNumber === newBatch.batchNumber
+                        );
+
+                        if (existingIndex !== -1) {
+                            // Update existing batch
+                            existingBatches[existingIndex] = {
+                                ...existingBatches[existingIndex].toObject(),
+                                ...newBatch,
+                            };
+                            logger.info(
+                                `Updated existing batch ${newBatch.batchNumber}`
+                            );
+                        } else {
+                            // Add new batch
+                            existingBatches.push(newBatch);
+                            logger.info(
+                                `Added new batch ${newBatch.batchNumber}`
+                            );
+                        }
+                    });
+
+                    vendorProduct.expiryTracking.batches = existingBatches;
+                }
+
+                // Recalculate inventory totals based on batches
+                if (
+                    vendorProduct.expiryTracking.hasExpiry &&
+                    vendorProduct.expiryTracking.batches.length > 0
+                ) {
+                    const totalBatchQuantity =
+                        vendorProduct.expiryTracking.batches.reduce(
+                            (sum, batch) => sum + (batch.quantity || 0),
+                            0
+                        );
+
+                    // Update currentStock to match total batch quantities
+                    vendorProduct.inventory.currentStock = totalBatchQuantity;
+
+                    logger.info(
+                        `Updated currentStock to ${totalBatchQuantity} based on batch totals`
+                    );
+                }
+            }
+        }
+
+        // Save to trigger pre-save middleware (which will calculate expiry fields and availableStock)
+        const savedProduct = await vendorProduct.save();
+
+        // Populate and return
+        await savedProduct.populate("product", "name brand category images");
+
+        logger.info(
+            `Product batches updated: ${savedProduct.product.name} by vendor ${vendor.businessName}`
+        );
+
+        return savedProduct;
+    } catch (error) {
+        logger.error(
+            `Update product batches error for user ${userId}:`,
+            error.message
+        );
+        throw error;
+    }
+};
+
 export {
     fetchVendorInventory,
     addProductToInventory,
@@ -512,4 +823,7 @@ export {
     updateStockLevels,
     fetchLowStockItems,
     processBatchUpdate,
+    fetchNearExpiryProducts,
+    fetchExpiredProducts,
+    updateProductBatches,
 };

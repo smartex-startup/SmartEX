@@ -7,7 +7,10 @@ import {
     getProduct,
     updateStock,
     getLowStock,
-    batchUpdate
+    batchUpdate,
+    getNearExpiry,
+    getExpired,
+    updateBatches,
 } from "../controllers/inventory.controller.js";
 import { auth, requireRole } from "../middlewares/auth.middleware.js";
 
@@ -21,6 +24,11 @@ router.post("/add", auth, requireRole("vendor"), addProduct);
 router.put("/stock/:id", auth, requireRole("vendor"), updateStock);
 router.get("/low-stock", auth, requireRole("vendor"), getLowStock);
 router.post("/batch-update", auth, requireRole("vendor"), batchUpdate);
+
+// Expiry management routes
+router.get("/near-expiry", auth, requireRole("vendor"), getNearExpiry);
+router.get("/expired", auth, requireRole("vendor"), getExpired);
+router.put("/batches/:id", auth, requireRole("vendor"), updateBatches);
 
 // Individual product routes
 router.get("/:id", auth, requireRole("vendor"), getProduct);

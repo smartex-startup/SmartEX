@@ -17,6 +17,9 @@ import authRoutes from "./routes/auth.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
 
+// Import scheduled jobs
+import "./scheduled/expiryUpdater.js";
+
 // Initialize express app
 const app = express();
 

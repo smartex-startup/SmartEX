@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { updateBatchExpiryFields } from "../utils/expiryCalculator.util.js";
 
 const vendorProductSchema = new mongoose.Schema(
     {
@@ -256,21 +257,19 @@ vendorProductSchema.pre("save", function (next) {
         this.availability.isAvailable = true;
     }
 
-    // Update batch remaining quantities
+    // Update batch remaining quantities and expiry status
     if (this.expiryTracking.batches && this.expiryTracking.batches.length > 0) {
         this.expiryTracking.batches.forEach((batch) => {
+            // Calculate remaining quantity
             batch.remainingQuantity = batch.quantity - batch.soldQuantity;
 
-            // Check if batch is expired
-            const today = new Date();
-            if (batch.expiryDate && batch.expiryDate < today) {
-                batch.isExpired = true;
-            }
-
-            // Calculate days to expiry
+            // Update expiry fields using utility (includes daysToExpiry, isExpired, isNearExpiry, nearExpiryDiscount)
             if (batch.expiryDate) {
-                const timeDiff = batch.expiryDate.getTime() - today.getTime();
-                batch.daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                const updatedBatch = updateBatchExpiryFields(batch);
+                batch.daysToExpiry = updatedBatch.daysToExpiry;
+                batch.isExpired = updatedBatch.isExpired;
+                batch.isNearExpiry = updatedBatch.isNearExpiry;
+                batch.nearExpiryDiscount = updatedBatch.nearExpiryDiscount;
             }
         });
     }

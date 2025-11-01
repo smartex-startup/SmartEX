@@ -7,6 +7,9 @@ import {
     updateStockLevels,
     fetchLowStockItems,
     processBatchUpdate,
+    fetchNearExpiryProducts,
+    fetchExpiredProducts,
+    updateProductBatches,
 } from "../services/inventory.service.js";
 import apiResponse from "../utils/response.util.js";
 import logger from "../utils/logger.util.js";
@@ -198,6 +201,80 @@ const batchUpdate = async (req, res) => {
     }
 };
 
+// Get near-expiry products
+const getNearExpiry = async (req, res) => {
+    try {
+        const nearExpiryData = await fetchNearExpiryProducts(req.user.id);
+        return apiResponse.success(
+            res,
+            "Near-expiry products retrieved successfully",
+            nearExpiryData
+        );
+    } catch (error) {
+        logger.error("Get near-expiry controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        return apiResponse.serverError(
+            res,
+            "Failed to retrieve near-expiry products"
+        );
+    }
+};
+
+// Get expired products
+const getExpired = async (req, res) => {
+    try {
+        const expiredData = await fetchExpiredProducts(req.user.id);
+        return apiResponse.success(
+            res,
+            "Expired products retrieved successfully",
+            expiredData
+        );
+    } catch (error) {
+        logger.error("Get expired controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        return apiResponse.serverError(
+            res,
+            "Failed to retrieve expired products"
+        );
+    }
+};
+
+// Update product batches
+const updateBatches = async (req, res) => {
+    try {
+        const updatedProduct = await updateProductBatches(
+            req.params.id,
+            req.user.id,
+            req.body
+        );
+        return apiResponse.success(
+            res,
+            "Product batches updated successfully",
+            updatedProduct
+        );
+    } catch (error) {
+        logger.error("Update batches controller error:", error.message);
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        if (error.name === "ValidationError") {
+            return apiResponse.badRequest(res, error.message);
+        }
+
+        return apiResponse.serverError(res, "Failed to update product batches");
+    }
+};
+
 export {
     getInventory,
     addProduct,
@@ -207,4 +284,7 @@ export {
     updateStock,
     getLowStock,
     batchUpdate,
+    getNearExpiry,
+    getExpired,
+    updateBatches,
 };
