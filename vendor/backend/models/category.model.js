@@ -55,7 +55,6 @@ const categorySchema = new mongoose.Schema(
 );
 
 // Create indexes
-categorySchema.index({ slug: 1 }, { unique: true });
 categorySchema.index({ parentCategory: 1 });
 categorySchema.index({ isActive: 1, sortOrder: 1 });
 
