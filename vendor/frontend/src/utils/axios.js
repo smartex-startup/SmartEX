@@ -1,8 +1,3 @@
-/**
- * Axios Configuration for SmartEX Vendor Portal
- * Handles authentication, token refresh, and common request/response patterns
- */
-
 import axios from "axios";
 import logger from "./logger.util.js";
 

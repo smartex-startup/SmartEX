@@ -1,7 +1,3 @@
-/**
- * Dashboard Page for SmartEX Vendor Portal
- */
-
 import React, { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useInventory } from "../context/InventoryContext";
