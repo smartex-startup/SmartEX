@@ -11,52 +11,43 @@ const isDevelopment = import.meta.env.DEV;
  */
 const getISTTimestamp = () => {
     const now = new Date();
-    const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); // Add 5.5 hours for IST
-    
-    const day = String(istTime.getUTCDate()).padStart(2, '0');
-    const month = istTime.toLocaleString('en', { month: 'short', timeZone: 'UTC' });
+    const istTime = new Date(now.getTime() + 5.5 * 60 * 60 * 1000); // Add 5.5 hours for IST
+
+    const day = String(istTime.getUTCDate()).padStart(2, "0");
+    const month = istTime.toLocaleString("en", {
+        month: "short",
+        timeZone: "UTC",
+    });
     const year = istTime.getUTCFullYear();
-    const hours = String(istTime.getUTCHours()).padStart(2, '0');
-    const minutes = String(istTime.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(istTime.getUTCSeconds()).padStart(2, '0');
-    
+    const hours = String(istTime.getUTCHours()).padStart(2, "0");
+    const minutes = String(istTime.getUTCMinutes()).padStart(2, "0");
+    const seconds = String(istTime.getUTCSeconds()).padStart(2, "0");
+
     return `${day}-${month}-${year} ${hours}:${minutes}:${seconds} IST`;
 };
 
 const logger = {
     info: (message, ...args) => {
         if (isDevelopment) {
-            console.log(
-                `[INFO] ${getISTTimestamp()} - ${message}`,
-                ...args
-            );
+            console.log(`[INFO] ${getISTTimestamp()} - ${message}`, ...args);
         }
     },
 
     error: (message, ...args) => {
         if (isDevelopment) {
-            console.error(
-                `[ERROR] ${getISTTimestamp()} - ${message}`,
-                ...args
-            );
+            console.error(`[ERROR] ${getISTTimestamp()} - ${message}`, ...args);
         }
     },
 
     warn: (message, ...args) => {
         if (isDevelopment) {
-            console.warn(
-                `[WARN] ${getISTTimestamp()} - ${message}`,
-                ...args
-            );
+            console.warn(`[WARN] ${getISTTimestamp()} - ${message}`, ...args);
         }
     },
 
     debug: (message, ...args) => {
         if (isDevelopment) {
-            console.debug(
-                `[DEBUG] ${getISTTimestamp()} - ${message}`,
-                ...args
-            );
+            console.debug(`[DEBUG] ${getISTTimestamp()} - ${message}`, ...args);
         }
     },
 };
