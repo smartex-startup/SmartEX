@@ -2,7 +2,13 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/LoginPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
+import InventoryPage from "./pages/inventory/InventoryPage.jsx";
+import AddInventoryPage from "./pages/inventory/AddInventoryPage.jsx";
+import LowStockPage from "./pages/inventory/LowStockPage.jsx";
+import NearExpiryPage from "./pages/inventory/NearExpiryPage.jsx";
+import ExpiredPage from "./pages/inventory/ExpiredPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import MainLayout from "./components/layout/MainLayout.jsx";
 
 const App = () => {
     return (
@@ -11,24 +17,57 @@ const App = () => {
                 {/* Public Routes */}
                 <Route path="/login" element={<LoginPage />} />
 
-                {/* Protected Routes */}
+                {/* Protected Routes with Layout */}
                 <Route
-                    path="/"
-                    element={<Navigate to="/dashboard" replace />}
-                />
-                <Route
-                    path="/dashboard"
+                    path="/*"
                     element={
                         <ProtectedRoute>
-                            <DashboardPage />
+                            <MainLayout>
+                                <Routes>
+                                    <Route
+                                        path="/"
+                                        element={
+                                            <Navigate to="/dashboard" replace />
+                                        }
+                                    />
+                                    <Route
+                                        path="/dashboard"
+                                        element={<DashboardPage />}
+                                    />
+
+                                    {/* Inventory Routes */}
+                                    <Route
+                                        path="/inventory"
+                                        element={<InventoryPage />}
+                                    />
+                                    <Route
+                                        path="/inventory/add"
+                                        element={<AddInventoryPage />}
+                                    />
+                                    <Route
+                                        path="/inventory/low-stock"
+                                        element={<LowStockPage />}
+                                    />
+                                    <Route
+                                        path="/inventory/near-expiry"
+                                        element={<NearExpiryPage />}
+                                    />
+                                    <Route
+                                        path="/inventory/expired"
+                                        element={<ExpiredPage />}
+                                    />
+
+                                    {/* Catch all for authenticated users */}
+                                    <Route
+                                        path="*"
+                                        element={
+                                            <Navigate to="/dashboard" replace />
+                                        }
+                                    />
+                                </Routes>
+                            </MainLayout>
                         </ProtectedRoute>
                     }
-                />
-
-                {/* Catch all route */}
-                <Route
-                    path="*"
-                    element={<Navigate to="/dashboard" replace />}
                 />
             </Routes>
         </div>

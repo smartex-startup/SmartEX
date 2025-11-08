@@ -20,6 +20,17 @@
     --color-danger-light: #f87171; /* Red-400 - Light variant */
     --color-danger-dark: #dc2626; /* Red-600 - Dark variant */
 
+    /* Text Color System */
+    --color-text-primary: #111827; /* gray-900 - Main headings, important text */
+    --color-text-secondary: #374151; /* gray-700 - Body text, labels */
+    --color-text-tertiary: #6b7280; /* gray-500 - Muted text, placeholders */
+    --color-text-quaternary: #9ca3af; /* gray-400 - Disabled text, subtle info */
+    --color-text-inverse: #ffffff; /* white - Text on dark backgrounds */
+    --color-text-brand: #2563eb; /* Primary color - Links, brand text */
+    --color-text-success: #059669; /* Success messages */
+    --color-text-warning: #d97706; /* Warning messages */
+    --color-text-danger: #dc2626; /* Error messages, danger text */
+
     /* Typography */
     --font-family-sans: ui-sans-serif, system-ui, sans-serif,
         "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
