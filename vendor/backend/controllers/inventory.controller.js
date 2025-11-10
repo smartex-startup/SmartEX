@@ -14,10 +14,38 @@ import {
 import apiResponse from "../utils/response.util.js";
 import logger from "../utils/logger.util.js";
 
-// Get inventory
+// Get inventory with filtering and pagination
 const getInventory = async (req, res) => {
     try {
-        const inventory = await fetchVendorInventory(req.user.id);
+        const {
+            page = 1,
+            limit = 10,
+            search = "",
+            category = "",
+            status = "",
+            minPrice = "",
+            maxPrice = "",
+            expiryStatus = "",
+            sortBy = "product.name",
+            sortOrder = "asc",
+        } = req.query;
+
+        const filters = {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            search: search.trim(),
+            category,
+            status,
+            minPrice: minPrice ? parseFloat(minPrice) : null,
+            maxPrice: maxPrice ? parseFloat(maxPrice) : null,
+            expiryStatus,
+            sortBy,
+            sortOrder: sortOrder === "desc" ? "desc" : "asc",
+        };
+
+        logger.info("Get inventory with filters:", filters);
+
+        const inventory = await fetchVendorInventory(req.user.id, filters);
         return apiResponse.success(
             res,
             "Inventory retrieved successfully",

@@ -4,8 +4,58 @@ import Vendor from "../models/vendor.model.js";
 import logger from "../utils/logger.util.js";
 import { updateAllBatchesExpiry } from "../utils/expiryCalculator.util.js";
 
-// Fetch vendor inventory
-const fetchVendorInventory = async (userId) => {
+// Helper function to calculate inventory summary efficiently
+const calculateInventorySummary = async (vendorId) => {
+    const summaryPipeline = [
+        { $match: { vendor: vendorId, isActive: { $ne: false } } },
+        {
+            $group: {
+                _id: null,
+                totalProducts: { $sum: 1 },
+                totalValue: {
+                    $sum: {
+                        $multiply: [
+                            { $ifNull: ["$pricing.finalPrice", 0] },
+                            { $ifNull: ["$inventory.currentStock", 0] },
+                        ],
+                    },
+                },
+                lowStockItems: {
+                    $sum: {
+                        $cond: [
+                            {
+                                $lte: [
+                                    "$inventory.currentStock",
+                                    "$inventory.minStockLevel",
+                                ],
+                            },
+                            1,
+                            0,
+                        ],
+                    },
+                },
+                outOfStockItems: {
+                    $sum: {
+                        $cond: [{ $eq: ["$inventory.currentStock", 0] }, 1, 0],
+                    },
+                },
+            },
+        },
+    ];
+
+    const [summaryResult] = await VendorProduct.aggregate(summaryPipeline);
+    return (
+        summaryResult || {
+            totalProducts: 0,
+            totalValue: 0,
+            lowStockItems: 0,
+            outOfStockItems: 0,
+        }
+    );
+};
+
+// Fetch vendor inventory with filtering and pagination
+const fetchVendorInventory = async (userId, filters = {}) => {
     try {
         // First get the vendor from user
         const vendor = await Vendor.findOne({ userId });
@@ -13,36 +63,336 @@ const fetchVendorInventory = async (userId) => {
             throw new Error("Vendor not found");
         }
 
-        const inventory = await VendorProduct.find({ vendor: vendor._id })
-            .populate("product", "name brand category images")
-            .populate("vendor", "businessName")
-            .sort({ updatedAt: -1 });
-
-        // Calculate summary
-        const summary = {
-            totalProducts: inventory.length,
-            totalValue: inventory.reduce((total, item) => {
-                return (
-                    total +
-                    (item.pricing?.sellingPrice || 0) *
-                        (item.inventory?.currentStock || 0)
-                );
-            }, 0),
-            lowStockItems: inventory.filter(
-                (item) =>
-                    item.inventory?.currentStock <=
-                    item.inventory?.minStockLevel
-            ).length,
-            outOfStockItems: inventory.filter(
-                (item) => item.inventory?.currentStock === 0
-            ).length,
+        // Build MongoDB query
+        let query = {
+            vendor: vendor._id,
+            isActive: { $ne: false }, // Only include active products by default
         };
 
-        logger.info(`Inventory fetched for vendor: ${vendor.businessName}`);
+        // Status filter
+        if (filters.status) {
+            query["availability.availabilityStatus"] = filters.status;
+        }
+
+        // Price filters
+        if (filters.minPrice !== null || filters.maxPrice !== null) {
+            query["pricing.finalPrice"] = {};
+            if (filters.minPrice !== null) {
+                query["pricing.finalPrice"].$gte = filters.minPrice;
+            }
+            if (filters.maxPrice !== null) {
+                query["pricing.finalPrice"].$lte = filters.maxPrice;
+            }
+        }
+
+        // Expiry status filter
+        if (filters.expiryStatus) {
+            switch (filters.expiryStatus) {
+                case "expired":
+                    query["expiryTracking.batches"] = {
+                        $elemMatch: { isExpired: true },
+                    };
+                    break;
+                case "near_expiry":
+                    query["expiryTracking.batches"] = {
+                        $elemMatch: { isNearExpiry: true },
+                    };
+                    break;
+                case "fresh":
+                    query["$and"] = [
+                        {
+                            "expiryTracking.batches": {
+                                $not: { $elemMatch: { isExpired: true } },
+                            },
+                        },
+                        {
+                            "expiryTracking.batches": {
+                                $not: { $elemMatch: { isNearExpiry: true } },
+                            },
+                        },
+                    ];
+                    break;
+            }
+        }
+
+        logger.info("MongoDB query:", JSON.stringify(query, null, 2));
+
+        // Start building the aggregation pipeline
+        let pipeline = [
+            { $match: query },
+            {
+                $lookup: {
+                    from: "products",
+                    localField: "product",
+                    foreignField: "_id",
+                    as: "product",
+                },
+            },
+            { $unwind: "$product" },
+            {
+                $lookup: {
+                    from: "categories",
+                    localField: "product.category",
+                    foreignField: "_id",
+                    as: "category",
+                },
+            },
+            {
+                $unwind: {
+                    path: "$category",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $project: {
+                    _id: 1,
+                    // Complete product information (matching Product model schema)
+                    product: {
+                        _id: "$product._id",
+                        name: "$product.name",
+                        // description: "$product.description",
+                        brand: "$product.brand",
+                        basePrice: "$product.basePrice",
+                        images: "$product.images",
+                        // specifications: "$product.specifications",
+                        // barcodes: "$product.barcodes",
+                        // hsn: "$product.hsn",
+                        // tags: "$product.tags",
+                        isActive: "$product.isActive",
+                        // requiresPrescription: "$product.requiresPrescription",
+                        // variants: "$product.variants",
+                    },
+                    // Complete category information (matching Category model schema)
+                    category: {
+                        _id: "$category._id",
+                        name: "$category.name",
+                        slug: "$category.slug",
+                        // description: "$category.description",
+                        // image: "$category.image",
+                        // icon: "$category.icon",
+                        parentCategory: "$category.parentCategory",
+                        isActive: "$category.isActive",
+                        // sortOrder: "$category.sortOrder",
+                        // metaData: "$category.metaData",
+                    },
+                    // All pricing fields (matching model schema)
+                    pricing: {
+                        costPrice: 1,
+                        sellingPrice: 1,
+                        discountPercentage: 1,
+                        finalPrice: 1,
+                        margin: 1,
+                    },
+                    // Complete inventory information
+                    inventory: {
+                        currentStock: 1,
+                        minStockLevel: 1,
+                        maxStockLevel: 1,
+                        reservedStock: 1,
+                        availableStock: 1,
+                    },
+                    // Availability information (matching model schema)
+                    availability: {
+                        isAvailable: 1,
+                        isOutOfStock: 1,
+                        estimatedRestockDate: 1,
+                        availabilityStatus: 1,
+                    },
+                    // Calculated expiry status
+                    expiryStatus: {
+                        $cond: {
+                            if: { $ne: ["$expiryTracking.hasExpiry", true] },
+                            then: "no_expiry",
+                            else: {
+                                $cond: {
+                                    if: {
+                                        $gt: [
+                                            {
+                                                $size: {
+                                                    $filter: {
+                                                        input: "$expiryTracking.batches",
+                                                        cond: {
+                                                            $eq: [
+                                                                "$$this.isExpired",
+                                                                true,
+                                                            ],
+                                                        },
+                                                    },
+                                                },
+                                            },
+                                            0,
+                                        ],
+                                    },
+                                    then: "expired",
+                                    else: {
+                                        $cond: {
+                                            if: {
+                                                $gt: [
+                                                    {
+                                                        $size: {
+                                                            $filter: {
+                                                                input: "$expiryTracking.batches",
+                                                                cond: {
+                                                                    $eq: [
+                                                                        "$$this.isNearExpiry",
+                                                                        true,
+                                                                    ],
+                                                                },
+                                                            },
+                                                        },
+                                                    },
+                                                    0,
+                                                ],
+                                            },
+                                            then: "near_expiry",
+                                            else: "fresh",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    // Basic expiry info (without heavy batch details)
+                    expiryInfo: {
+                        hasExpiry: "$expiryTracking.hasExpiry",
+                        totalBatches: {
+                            $size: { $ifNull: ["$expiryTracking.batches", []] },
+                        },
+                        nextExpiryDate: {
+                            $min: {
+                                $map: {
+                                    input: "$expiryTracking.batches",
+                                    as: "batch",
+                                    in: "$$batch.expiryDate",
+                                },
+                            },
+                        },
+                    },
+                    // Settings (matching model schema)
+                    // settings: {
+                    //     autoRestock: 1,
+                    //     autoDiscountNearExpiry: 1,
+                    //     hideWhenOutOfStock: 1,
+                    //     maxOrderQuantity: 1,
+                    //     minOrderQuantity: 1,
+                    // },
+                    // Top-level fields
+                    isActive: 1,
+                    // Timestamps
+                    createdAt: 1,
+                    updatedAt: 1,
+                },
+            },
+        ];
+
+        // Add search filter if provided
+        if (filters.search) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        {
+                            "product.name": {
+                                $regex: filters.search,
+                                $options: "i",
+                            },
+                        },
+                        {
+                            "product.brand": {
+                                $regex: filters.search,
+                                $options: "i",
+                            },
+                        },
+                        {
+                            "category.name": {
+                                $regex: filters.search,
+                                $options: "i",
+                            },
+                        },
+                    ],
+                },
+            });
+        }
+
+        // Add category filter if provided
+        if (filters.category) {
+            pipeline.push({
+                $match: {
+                    "product.category": filters.category,
+                },
+            });
+        }
+
+        // Add sorting
+        let sortField = "product.name";
+        if (filters.sortBy) {
+            switch (filters.sortBy) {
+                case "name":
+                case "product.name":
+                    sortField = "product.name";
+                    break;
+                case "brand":
+                case "product.brand":
+                    sortField = "product.brand";
+                    break;
+                case "price":
+                case "pricing.finalPrice":
+                    sortField = "pricing.finalPrice";
+                    break;
+                case "stock":
+                case "inventory.currentStock":
+                    sortField = "inventory.currentStock";
+                    break;
+                case "updated":
+                case "updatedAt":
+                    sortField = "updatedAt";
+                    break;
+                case "category":
+                    sortField = "category.name";
+                    break;
+                default:
+                    sortField = "product.name";
+            }
+        }
+
+        const sortOrder = filters.sortOrder === "desc" ? -1 : 1;
+        pipeline.push({ $sort: { [sortField]: sortOrder } });
+
+        // Get total count before pagination
+        const countPipeline = [...pipeline, { $count: "total" }];
+        const countResult = await VendorProduct.aggregate(countPipeline);
+        const totalItems = countResult.length > 0 ? countResult[0].total : 0;
+
+        // Add pagination
+        const page = filters.page || 1;
+        const limit = filters.limit || 10;
+        const skip = (page - 1) * limit;
+
+        pipeline.push({ $skip: skip });
+        pipeline.push({ $limit: limit });
+
+        // Execute the main query
+        const products = await VendorProduct.aggregate(pipeline);
+
+        // Calculate summary efficiently
+        const summary = await calculateInventorySummary(vendor._id);
+
+        const totalPages = Math.ceil(totalItems / limit);
+
+        logger.info(
+            `Inventory fetched for vendor: ${vendor.businessName} - ${products.length} items on page ${page} of ${totalPages}`
+        );
 
         return {
-            products: inventory,
+            products,
             summary,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalItems,
+                limit,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1,
+            },
         };
     } catch (error) {
         logger.error(
