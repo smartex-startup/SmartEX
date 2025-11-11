@@ -1,6 +1,15 @@
 import React, { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useInventory } from "../context/InventoryContext";
+import {
+    FaBox,
+    FaDollarSign,
+    FaExclamationTriangle,
+    FaTimes,
+    FaPlus,
+    FaClipboardList,
+    FaBell,
+} from "react-icons/fa";
 
 const DashboardPage = () => {
     const { vendor } = useAuth();
@@ -36,10 +45,10 @@ const DashboardPage = () => {
         <div className="p-6">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-text-primary">
                     Welcome back, {vendor?.businessName || "Vendor"}!
                 </h1>
-                <p className="text-gray-600 mt-2">
+                <p className="text-text-tertiary mt-2">
                     Here's your business overview for today
                 </p>
             </div>
@@ -49,27 +58,15 @@ const DashboardPage = () => {
                 {/* Total Products */}
                 <div className="bg-white p-6 rounded-lg shadow">
                     <div className="flex items-center">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <svg
-                                className="w-6 h-6 text-blue-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                                />
-                            </svg>
+                        <div className="p-2 bg-blue-50 rounded-lg">
+                            <FaBox className="w-6 h-6 text-blue-600" />
                         </div>
                     </div>
                     <div className="mt-4">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-text-primary">
                             Total Products
                         </h3>
-                        <p className="text-3xl font-bold text-blue-600 mt-2">
+                        <p className="text-3xl font-bold text-primary mt-2">
                             {summary?.totalProducts || 0}
                         </p>
                     </div>
@@ -78,27 +75,15 @@ const DashboardPage = () => {
                 {/* Total Value */}
                 <div className="bg-white p-6 rounded-lg shadow">
                     <div className="flex items-center">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                            <svg
-                                className="w-6 h-6 text-green-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                                />
-                            </svg>
+                        <div className="p-2 bg-green-50 rounded-lg">
+                            <FaDollarSign className="w-6 h-6 text-green-600" />
                         </div>
                     </div>
                     <div className="mt-4">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-text-primary">
                             Total Value
                         </h3>
-                        <p className="text-3xl font-bold text-green-600 mt-2">
+                        <p className="text-3xl font-bold text-secondary mt-2">
                             ₹{summary?.totalValue?.toLocaleString() || 0}
                         </p>
                     </div>
@@ -107,27 +92,15 @@ const DashboardPage = () => {
                 {/* Low Stock */}
                 <div className="bg-white p-6 rounded-lg shadow">
                     <div className="flex items-center">
-                        <div className="p-2 bg-amber-100 rounded-lg">
-                            <svg
-                                className="w-6 h-6 text-amber-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                                />
-                            </svg>
+                        <div className="p-2 bg-orange-50 rounded-lg">
+                            <FaExclamationTriangle className="w-6 h-6 text-orange-600" />
                         </div>
                     </div>
                     <div className="mt-4">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-text-primary">
                             Low Stock
                         </h3>
-                        <p className="text-3xl font-bold text-amber-600 mt-2">
+                        <p className="text-3xl font-bold text-accent mt-2">
                             {summary?.lowStockItems || 0}
                         </p>
                     </div>
@@ -136,27 +109,15 @@ const DashboardPage = () => {
                 {/* Out of Stock */}
                 <div className="bg-white p-6 rounded-lg shadow">
                     <div className="flex items-center">
-                        <div className="p-2 bg-red-100 rounded-lg">
-                            <svg
-                                className="w-6 h-6 text-red-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
+                        <div className="p-2 bg-red-50 rounded-lg">
+                            <FaTimes className="w-6 h-6 text-red-600" />
                         </div>
                     </div>
                     <div className="mt-4">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-text-primary">
                             Out of Stock
                         </h3>
-                        <p className="text-3xl font-bold text-red-600 mt-2">
+                        <p className="text-3xl font-bold text-danger mt-2">
                             {summary?.outOfStockItems || 0}
                         </p>
                     </div>
@@ -165,83 +126,47 @@ const DashboardPage = () => {
 
             {/* Quick Actions */}
             <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                <h2 className="text-xl font-semibold text-text-primary mb-4">
                     Quick Actions
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className="p-2 bg-blue-100 rounded-lg mr-4">
-                            <svg
-                                className="w-6 h-6 text-blue-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                            </svg>
+                        <div className="p-2 bg-blue-50 rounded-lg mr-4">
+                            <FaPlus className="w-6 h-6 text-blue-600" />
                         </div>
                         <div className="text-left">
-                            <h3 className="font-medium text-gray-900">
+                            <h3 className="font-medium text-text-primary">
                                 Add Product
                             </h3>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-text-tertiary">
                                 Add new product to inventory
                             </p>
                         </div>
                     </button>
 
                     <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className="p-2 bg-green-100 rounded-lg mr-4">
-                            <svg
-                                className="w-6 h-6 text-green-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                                />
-                            </svg>
+                        <div className="p-2 bg-green-50 rounded-lg mr-4">
+                            <FaClipboardList className="w-6 h-6 text-green-600" />
                         </div>
                         <div className="text-left">
-                            <h3 className="font-medium text-gray-900">
+                            <h3 className="font-medium text-text-primary">
                                 Manage Inventory
                             </h3>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-text-tertiary">
                                 Update stock and pricing
                             </p>
                         </div>
                     </button>
 
                     <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className="p-2 bg-amber-100 rounded-lg mr-4">
-                            <svg
-                                className="w-6 h-6 text-amber-600"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
+                        <div className="p-2 bg-orange-50 rounded-lg mr-4">
+                            <FaBell className="w-6 h-6 text-orange-600" />
                         </div>
                         <div className="text-left">
-                            <h3 className="font-medium text-gray-900">
+                            <h3 className="font-medium text-text-primary">
                                 View Alerts
                             </h3>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-text-tertiary">
                                 Check low stock & expiry
                             </p>
                         </div>

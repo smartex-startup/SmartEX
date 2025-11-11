@@ -1,4 +1,5 @@
 import React from "react";
+import { FaChevronRight, FaPlus } from "react-icons/fa";
 
 const AddInventoryPage = () => {
     return (
@@ -7,19 +8,7 @@ const AddInventoryPage = () => {
             <div>
                 <nav className="flex items-center space-x-2 text-sm text-text-tertiary mb-4">
                     <span>Inventory</span>
-                    <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                        />
-                    </svg>
+                    <FaChevronRight className="w-4 h-4" />
                     <span className="text-text-primary">Add to Inventory</span>
                 </nav>
                 <h1 className="text-2xl font-semibold text-text-primary">
@@ -36,19 +25,7 @@ const AddInventoryPage = () => {
                 <div className="p-6">
                     <div className="text-center py-12">
                         <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <svg
-                                className="w-12 h-12 text-gray-400"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                            </svg>
+                            <FaPlus className="w-12 h-12 text-blue-500" />
                         </div>
                         <h3 className="text-lg font-medium text-text-primary mb-2">
                             Add to Inventory

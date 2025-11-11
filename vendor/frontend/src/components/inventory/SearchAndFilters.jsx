@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { FaSpinner } from "react-icons/fa";
 import { useInventory } from "../../context/InventoryContext.jsx";
 
 const SearchAndFilters = () => {
@@ -51,11 +52,11 @@ const SearchAndFilters = () => {
     return (
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-lg font-semibold text-text-primary">
                     Search & Filters
                 </h2>
                 {hasActiveFilters && (
-                    <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                    <span className="text-sm bg-primary-light bg-opacity-20 text-primary px-2 py-1 rounded-full">
                         Filters Applied
                     </span>
                 )}
@@ -68,7 +69,7 @@ const SearchAndFilters = () => {
                     <div>
                         <label
                             htmlFor="search"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="block text-sm font-medium text-text-secondary mb-1"
                         >
                             Search Products
                         </label>
@@ -80,7 +81,7 @@ const SearchAndFilters = () => {
                                 handleInputChange("search", e.target.value)
                             }
                             placeholder="Search by product name or brand..."
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                     </div>
 
@@ -88,7 +89,7 @@ const SearchAndFilters = () => {
                     <div>
                         <label
                             htmlFor="category"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="block text-sm font-medium text-text-secondary mb-1"
                         >
                             Category
                         </label>
@@ -98,7 +99,7 @@ const SearchAndFilters = () => {
                             onChange={(e) =>
                                 handleInputChange("category", e.target.value)
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="">All Categories</option>
                             <option value="Electronics">Electronics</option>
@@ -123,7 +124,7 @@ const SearchAndFilters = () => {
                     <div>
                         <label
                             htmlFor="status"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="block text-sm font-medium text-text-secondary mb-1"
                         >
                             Availability Status
                         </label>
@@ -133,7 +134,7 @@ const SearchAndFilters = () => {
                             onChange={(e) =>
                                 handleInputChange("status", e.target.value)
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="">All Status</option>
                             <option value="available">Available</option>
@@ -147,7 +148,7 @@ const SearchAndFilters = () => {
                     <div>
                         <label
                             htmlFor="expiryStatus"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="block text-sm font-medium text-text-secondary mb-1"
                         >
                             Expiry Status
                         </label>
@@ -160,7 +161,7 @@ const SearchAndFilters = () => {
                                     e.target.value
                                 )
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="">All Items</option>
                             <option value="fresh">Fresh</option>
@@ -175,7 +176,7 @@ const SearchAndFilters = () => {
                     <div>
                         <label
                             htmlFor="minPrice"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="block text-sm font-medium text-text-secondary mb-1"
                         >
                             Min Price (₹)
                         </label>
@@ -188,14 +189,14 @@ const SearchAndFilters = () => {
                             }
                             placeholder="0"
                             min="0"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                     </div>
 
                     <div>
                         <label
                             htmlFor="maxPrice"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="block text-sm font-medium text-text-secondary mb-1"
                         >
                             Max Price (₹)
                         </label>
@@ -208,7 +209,7 @@ const SearchAndFilters = () => {
                             }
                             placeholder="No limit"
                             min="0"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                     </div>
                 </div>
@@ -218,7 +219,7 @@ const SearchAndFilters = () => {
                     <div>
                         <label
                             htmlFor="sortBy"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="block text-sm font-medium text-text-secondary mb-1"
                         >
                             Sort By
                         </label>
@@ -228,7 +229,7 @@ const SearchAndFilters = () => {
                             onChange={(e) =>
                                 handleInputChange("sortBy", e.target.value)
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="product.name">Product Name</option>
                             <option value="product.brand">Brand</option>
@@ -242,7 +243,7 @@ const SearchAndFilters = () => {
                     <div>
                         <label
                             htmlFor="sortOrder"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="block text-sm font-medium text-text-secondary mb-1"
                         >
                             Sort Order
                         </label>
@@ -252,7 +253,7 @@ const SearchAndFilters = () => {
                             onChange={(e) =>
                                 handleInputChange("sortOrder", e.target.value)
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="asc">Ascending</option>
                             <option value="desc">Descending</option>
@@ -265,30 +266,11 @@ const SearchAndFilters = () => {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-6 py-2 bg-primary text-text-inverse rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
                         {loading ? (
                             <>
-                                <svg
-                                    className="animate-spin h-4 w-4 text-white"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <circle
-                                        className="opacity-25"
-                                        cx="12"
-                                        cy="12"
-                                        r="10"
-                                        stroke="currentColor"
-                                        strokeWidth="4"
-                                    ></circle>
-                                    <path
-                                        className="opacity-75"
-                                        fill="currentColor"
-                                        d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                </svg>
+                                <FaSpinner className="animate-spin h-4 w-4 text-text-inverse" />
                                 Applying...
                             </>
                         ) : (
@@ -300,7 +282,7 @@ const SearchAndFilters = () => {
                         type="button"
                         onClick={handleClearFilters}
                         disabled={loading}
-                        className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-6 py-2 border border-gray-300 text-text-secondary rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Clear Filters
                     </button>

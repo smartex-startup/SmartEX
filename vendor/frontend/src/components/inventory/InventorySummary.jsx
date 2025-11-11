@@ -1,4 +1,10 @@
 import React from "react";
+import {
+    FaBox,
+    FaDollarSign,
+    FaExclamationTriangle,
+    FaClock,
+} from "react-icons/fa";
 import { useInventory } from "../../context/InventoryContext.jsx";
 
 const InventorySummary = () => {
@@ -29,86 +35,30 @@ const InventorySummary = () => {
         {
             title: "Total Products",
             value: summary?.totalProducts || 0,
-            icon: (
-                <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"
-                    />
-                </svg>
-            ),
-            bgColor: "bg-blue-100",
+            icon: <FaBox className="w-6 h-6" />,
+            bgColor: "bg-blue-50",
             iconColor: "text-blue-600",
         },
         {
             title: "Total Value",
             value: `₹${(summary?.totalValue || 0).toLocaleString("en-IN")}`,
-            icon: (
-                <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                    />
-                </svg>
-            ),
-            bgColor: "bg-green-100",
+            icon: <FaDollarSign className="w-6 h-6" />,
+            bgColor: "bg-green-50",
             iconColor: "text-green-600",
         },
         {
             title: "Low Stock Items",
             value: summary?.lowStockItems || 0,
-            icon: (
-                <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 15.5c-.77.833.192 2.5 1.732 2.5z"
-                    />
-                </svg>
-            ),
-            bgColor: "bg-yellow-100",
-            iconColor: "text-yellow-600",
+            icon: <FaExclamationTriangle className="w-6 h-6" />,
+            bgColor: "bg-orange-50",
+            iconColor: "text-orange-600",
             alert: (summary?.lowStockItems || 0) > 0,
         },
         {
             title: "Out of Stock",
             value: summary?.outOfStockItems || 0,
-            icon: (
-                <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                </svg>
-            ),
-            bgColor: "bg-red-100",
+            icon: <FaClock className="w-6 h-6" />,
+            bgColor: "bg-red-50",
             iconColor: "text-red-600",
             alert: (summary?.outOfStockItems || 0) > 0,
         },
@@ -120,9 +70,7 @@ const InventorySummary = () => {
                 <div
                     key={index}
                     className={`bg-white p-6 rounded-lg shadow border-l-4 ${
-                        card.alert
-                            ? "border-l-orange-400"
-                            : "border-l-transparent"
+                        card.alert ? "border-l-accent" : "border-l-transparent"
                     }`}
                 >
                     <div className="flex items-center">
@@ -130,10 +78,10 @@ const InventorySummary = () => {
                             <div className={card.iconColor}>{card.icon}</div>
                         </div>
                         <div className="ml-4">
-                            <p className="text-2xl font-semibold text-gray-900">
+                            <p className="text-2xl font-semibold text-text-primary">
                                 {card.value}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-text-tertiary">
                                 {card.title}
                             </p>
                         </div>
@@ -141,19 +89,7 @@ const InventorySummary = () => {
 
                     {card.alert && (
                         <div className="mt-3 flex items-center">
-                            <svg
-                                className="w-4 h-4 text-orange-500 mr-2"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 15.5c-.77.833.192 2.5 1.732 2.5z"
-                                />
-                            </svg>
+                            <FaExclamationTriangle className="w-4 h-4 text-orange-500 mr-2" />
                             <span className="text-xs text-orange-600 font-medium">
                                 Requires attention
                             </span>
