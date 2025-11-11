@@ -4,22 +4,17 @@ import { useInventory } from "../context/InventoryContext";
 
 const DashboardPage = () => {
     const { vendor } = useAuth();
-    const {
-        summary,
-        isLoading,
-        fetchInventory,
-        fetchLowStock,
-        fetchNearExpiry,
-    } = useInventory();
+    const { summary, loading, loadInventory, loadLowStock, loadNearExpiry } =
+        useInventory();
 
     // Fetch data on component mount
     useEffect(() => {
-        fetchInventory();
-        fetchLowStock();
-        fetchNearExpiry();
-    }, [fetchInventory, fetchLowStock, fetchNearExpiry]);
+        loadInventory();
+        loadLowStock();
+        loadNearExpiry();
+    }, [loadInventory, loadLowStock, loadNearExpiry]);
 
-    if (isLoading) {
+    if (loading) {
         return (
             <div className="p-6">
                 <div className="animate-pulse">

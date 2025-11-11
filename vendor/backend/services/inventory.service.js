@@ -702,7 +702,7 @@ const fetchLowStockItems = async (userId) => {
         );
 
         return {
-            items: lowStockItems,
+            products: lowStockItems,
             summary,
         };
     } catch (error) {

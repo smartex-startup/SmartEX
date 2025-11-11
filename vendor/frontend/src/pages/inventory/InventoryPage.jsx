@@ -1,65 +1,56 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useInventory } from "../../context/InventoryContext.jsx";
+import SearchAndFilters from "../../components/inventory/SearchAndFilters.jsx";
+import InventoryTable from "../../components/inventory/InventoryTable.jsx";
+import InventorySummary from "../../components/inventory/InventorySummary.jsx";
+import Pagination from "../../components/common/Pagination.jsx";
+import logger from "../../utils/logger.util.js";
 
 const InventoryPage = () => {
+    const {
+        inventory,
+        pagination,
+        summary,
+        loading,
+        error,
+        loadInventory,
+        filters,
+    } = useInventory();
+
+    // Load inventory when component mounts
+    useEffect(() => {
+        logger.info("InventoryPage: Initial inventory load...");
+        loadInventory(1);
+    }, [loadInventory]); // Only depend on loadInventory function
+
     return (
         <div className="space-y-6">
             {/* Page Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
                 <div>
-                    <h1 className="text-2xl font-semibold text-text-primary">
+                    <h1 className="text-2xl font-semibold text-gray-900">
                         All Inventory
                     </h1>
-                    <p className="text-text-secondary mt-1">
-                        Manage your inventory products (0 products)
+                    <p className="text-gray-600 mt-1">
+                        Manage your inventory products
+                        {pagination.totalItems > 0 && (
+                            <>
+                                {" "}
+                                ({pagination.totalItems.toLocaleString(
+                                    "en-IN"
+                                )}{" "}
+                                products)
+                            </>
+                        )}
                     </p>
                 </div>
-                <button className="bg-primary text-text-inverse px-4 py-2 rounded-lg font-medium hover:bg-primary-dark transition-colors flex items-center space-x-2">
-                    <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                <div className="flex items-center space-x-3">
+                    {/* Quick Action Buttons */}
+                    <Link
+                        to="/inventory/low-stock"
+                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2 text-gray-600"
                     >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                        />
-                    </svg>
-                    <span>Add to Inventory</span>
-                </button>
-            </div>
-
-            {/* Search and Filters */}
-            <div className="flex items-center justify-between space-x-4">
-                <div className="flex-1 max-w-lg">
-                    <div className="relative">
-                        <input
-                            type="text"
-                            placeholder="Search inventory..."
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                        />
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg
-                                className="h-5 w-5 text-gray-400"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                                />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                    <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2">
                         <svg
                             className="w-4 h-4"
                             fill="none"
@@ -70,30 +61,102 @@ const InventoryPage = () => {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 15.5c-.77.833.192 2.5 1.732 2.5z"
                             />
                         </svg>
-                        <span>Filters (0)</span>
-                    </button>
-                    <button className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors">
-                        Clear Filters
-                    </button>
+                        <span>Low Stock</span>
+                    </Link>
+
+                    <Link
+                        to="/inventory/near-expiry"
+                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center space-x-2 text-gray-600"
+                    >
+                        <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <span>Near Expiry</span>
+                    </Link>
+
+                    <Link
+                        to="/inventory/add"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                    >
+                        <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                            />
+                        </svg>
+                        <span>Add to Inventory</span>
+                    </Link>
                 </div>
             </div>
 
-            {/* Table Header */}
-            <div className="bg-white rounded-lg shadow">
-                <div className="grid grid-cols-12 gap-4 p-4 border-b border-gray-200 text-sm font-medium text-gray-500">
-                    <div className="col-span-4">Product</div>
-                    <div className="col-span-2">Category</div>
-                    <div className="col-span-2">Price</div>
-                    <div className="col-span-2">Discounted Price</div>
-                    <div className="col-span-1">Stock</div>
-                    <div className="col-span-1">Actions</div>
-                </div>
+            {/* Summary Cards */}
+            <InventorySummary />
 
-                {/* Empty State */}
-                <div className="p-12 text-center">
+            {/* Error Display */}
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-center">
+                        <svg
+                            className="w-5 h-5 text-red-400 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <div>
+                            <h3 className="text-sm font-medium text-red-800">
+                                Error loading inventory
+                            </h3>
+                            <p className="text-sm text-red-600 mt-1">{error}</p>
+                        </div>
+                        <button
+                            onClick={() => loadInventory()}
+                            className="ml-auto px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-sm rounded transition-colors"
+                        >
+                            Retry
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Search and Filters */}
+            <SearchAndFilters />
+
+            {/* Inventory Table */}
+            <InventoryTable />
+
+            {/* Pagination */}
+            <Pagination />
+
+            {/* Empty State for No Results */}
+            {!loading && (!inventory || inventory.length === 0) && !error && (
+                <div className="bg-white rounded-lg shadow p-12 text-center">
                     <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
                         <svg
                             className="w-12 h-12 text-gray-400"
@@ -109,18 +172,37 @@ const InventoryPage = () => {
                             />
                         </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-text-primary mb-2">
-                        No products in inventory
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No products found
                     </h3>
-                    <p className="text-text-tertiary mb-6">
-                        Get started by adding products from the catalog to your
-                        inventory.
+                    <p className="text-gray-500 mb-6">
+                        {pagination.totalItems === 0
+                            ? "Get started by adding products from the catalog to your inventory."
+                            : "No products match your current filters. Try adjusting your search or filters."}
                     </p>
-                    <button className="bg-primary text-text-inverse px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors">
-                        Add Your First Product
-                    </button>
+                    {pagination.totalItems === 0 && (
+                        <Link
+                            to="/inventory/add"
+                            className="inline-flex items-center bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            <svg
+                                className="w-4 h-4 mr-2"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                                />
+                            </svg>
+                            Add Your First Product
+                        </Link>
+                    )}
                 </div>
-            </div>
+            )}
         </div>
     );
 };

@@ -1,11 +1,26 @@
 import apiClient from "../utils/axios.js";
 import logger from "../utils/logger.util.js";
 
-// Get vendor inventory
-export const getInventory = async () => {
+// Get vendor inventory with pagination and filtering
+export const getInventory = async (params = {}) => {
     try {
-        logger.info("Fetching vendor inventory...");
-        const response = await apiClient.get("/inventory");
+        logger.info("Fetching vendor inventory...", params);
+
+        const queryParams = new URLSearchParams();
+        Object.keys(params).forEach((key) => {
+            if (
+                params[key] !== null &&
+                params[key] !== undefined &&
+                params[key] !== ""
+            ) {
+                queryParams.append(key, params[key]);
+            }
+        });
+
+        const queryString = queryParams.toString();
+        const url = queryString ? `/inventory?${queryString}` : "/inventory";
+
+        const response = await apiClient.get(url);
         logger.info("Inventory fetched successfully");
         return response.data;
     } catch (error) {

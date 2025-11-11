@@ -7,100 +7,201 @@ const InventoryContext = createContext();
 
 // Inventory provider component
 export const InventoryProvider = ({ children }) => {
+    // Main inventory data
     const [inventory, setInventory] = useState([]);
     const [lowStockItems, setLowStockItems] = useState([]);
     const [nearExpiryItems, setNearExpiryItems] = useState([]);
     const [expiredItems, setExpiredItems] = useState([]);
-    const [summary, setSummary] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
+
+    // Summary data
+    const [summary, setSummary] = useState({
+        totalProducts: 0,
+        totalValue: 0,
+        lowStockItems: 0,
+        outOfStockItems: 0,
+    });
+
+    // Pagination
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 0,
+        totalItems: 0,
+        limit: 10,
+        hasNextPage: false,
+        hasPrevPage: false,
+    });
+
+    // Filters
+    const [filters, setFilters] = useState({
+        search: "",
+        category: "",
+        status: "",
+        minPrice: "",
+        maxPrice: "",
+        expiryStatus: "",
+        sortBy: "product.name",
+        sortOrder: "asc",
+    });
+
+    // Loading and error states
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Fetch inventory
-    const fetchInventory = useCallback(async () => {
-        try {
-            setIsLoading(true);
+    // Load inventory with filters and pagination
+    const loadInventory = useCallback(
+        async (page = 1) => {
+            setLoading(true);
             setError(null);
 
-            const response = await inventoryAPI.getInventory();
+            try {
+                // Prepare query parameters
+                const queryParams = {
+                    ...filters,
+                    page,
+                    limit: pagination.limit,
+                };
 
-            setInventory(response.data || []);
-            setSummary(response.meta?.summary || null);
-        } catch (error) {
-            const errorMessage =
-                error.response?.data?.message ||
-                error.message ||
-                "Failed to fetch inventory";
-            setError(errorMessage);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+                // Remove empty values
+                const cleanParams = Object.fromEntries(
+                    Object.entries(queryParams).filter(
+                        ([_, value]) =>
+                            value !== "" &&
+                            value !== null &&
+                            value !== undefined
+                    )
+                );
 
-    // Fetch low stock items
-    const fetchLowStock = useCallback(async () => {
+                logger.info("Loading inventory with params:", cleanParams);
+
+                const response = await inventoryAPI.getInventory(cleanParams);
+
+                if (response?.success && response?.data) {
+                    const {
+                        products,
+                        summary: summaryData,
+                        pagination: paginationData,
+                    } = response.data;
+
+                    setInventory(products || []);
+                    setSummary(
+                        summaryData || {
+                            totalProducts: 0,
+                            totalValue: 0,
+                            lowStockItems: 0,
+                            outOfStockItems: 0,
+                        }
+                    );
+                    setPagination(
+                        paginationData || {
+                            currentPage: 1,
+                            totalPages: 0,
+                            totalItems: 0,
+                            limit: 10,
+                            hasNextPage: false,
+                            hasPrevPage: false,
+                        }
+                    );
+
+                    logger.info(
+                        `Successfully loaded ${
+                            products?.length || 0
+                        } inventory items`
+                    );
+                } else {
+                    throw new Error(
+                        response?.message || "Failed to load inventory"
+                    );
+                }
+            } catch (err) {
+                logger.error("Error loading inventory:", err);
+                setError(err.message || "Failed to load inventory");
+                setInventory([]);
+            } finally {
+                setLoading(false);
+            }
+        },
+        [filters, pagination.limit]
+    );
+
+    // Load low stock items
+    const loadLowStock = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
         try {
-            setIsLoading(true);
-            setError(null);
-
             const response = await inventoryAPI.getLowStock();
-
-            setLowStockItems(response.data || []);
-        } catch (error) {
-            const errorMessage =
-                error.response?.data?.message ||
-                error.message ||
-                "Failed to fetch low stock items";
-            setError(errorMessage);
+            setLowStockItems(response.data.products || []);
+            logger.info("Successfully loaded low stock items");
+        } catch (err) {
+            logger.error("Error loading low stock items:", err);
+            setError("Failed to load low stock items");
+            setLowStockItems([]);
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
     }, []);
 
-    // Fetch near expiry items
-    const fetchNearExpiry = useCallback(async () => {
+    // Load near expiry items
+    const loadNearExpiry = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
         try {
-            setIsLoading(true);
-            setError(null);
-
             const response = await inventoryAPI.getNearExpiry();
-
-            setNearExpiryItems(response.data || []);
-        } catch (error) {
-            const errorMessage =
-                error.response?.data?.message ||
-                error.message ||
-                "Failed to fetch near expiry items";
-            setError(errorMessage);
+            setNearExpiryItems(response.data.products || []);
+            logger.info("Successfully loaded near expiry items");
+        } catch (err) {
+            logger.error("Error loading near expiry items:", err);
+            setError("Failed to load near expiry items");
+            setNearExpiryItems([]);
         } finally {
-            setIsLoading(false);
+            setLoading(false);
         }
     }, []);
 
-    // Add product to inventory
+    // Load expired items
+    const loadExpired = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const response = await inventoryAPI.getExpired();
+            setExpiredItems(response.data.products || []);
+            logger.info("Successfully loaded expired items");
+        } catch (err) {
+            logger.error("Error loading expired items:", err);
+            setError("Failed to load expired items");
+            setExpiredItems([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Add new product
     const addProduct = useCallback(async (productData) => {
         try {
             setError(null);
-
             const response = await inventoryAPI.addProduct(productData);
 
             setInventory((prev) => [...prev, response.data]);
-            setError(null);
-            return { success: true };
-        } catch (error) {
+            logger.info("Product added successfully");
+
+            return { success: true, data: response.data };
+        } catch (err) {
+            logger.error("Error adding product:", err);
             const errorMessage =
-                error.response?.data?.message ||
-                error.message ||
+                err.response?.data?.message ||
+                err.message ||
                 "Failed to add product";
             setError(errorMessage);
             return { success: false, error: errorMessage };
         }
     }, []);
 
-    // Update product in inventory
+    // Update existing product
     const updateProduct = useCallback(async (productId, updateData) => {
         try {
             setError(null);
-
             const response = await inventoryAPI.updateProduct(
                 productId,
                 updateData
@@ -108,64 +209,141 @@ export const InventoryProvider = ({ children }) => {
 
             setInventory((prev) =>
                 prev.map((item) =>
-                    item._id === response.data._id ? response.data : item
+                    item._id === productId ? response.data : item
                 )
             );
-            setError(null);
-            return { success: true };
-        } catch (error) {
+            logger.info("Product updated successfully");
+
+            return { success: true, data: response.data };
+        } catch (err) {
+            logger.error("Error updating product:", err);
             const errorMessage =
-                error.response?.data?.message ||
-                error.message ||
+                err.response?.data?.message ||
+                err.message ||
                 "Failed to update product";
             setError(errorMessage);
             return { success: false, error: errorMessage };
         }
     }, []);
 
-    // Remove product from inventory
+    // Remove product
     const removeProduct = useCallback(async (productId) => {
         try {
             setError(null);
-
             await inventoryAPI.removeProduct(productId);
 
             setInventory((prev) =>
                 prev.filter((item) => item._id !== productId)
             );
-            setError(null);
+            logger.info("Product removed successfully");
+
             return { success: true };
-        } catch (error) {
+        } catch (err) {
+            logger.error("Error removing product:", err);
             const errorMessage =
-                error.response?.data?.message ||
-                error.message ||
+                err.response?.data?.message ||
+                err.message ||
                 "Failed to remove product";
             setError(errorMessage);
             return { success: false, error: errorMessage };
         }
     }, []);
 
-    // Clear error function
+    // Apply filters
+    const applyFilters = useCallback(
+        async (newFilters) => {
+            logger.info("Applying filters:", newFilters);
+            setFilters((prev) => ({ ...prev, ...newFilters }));
+            setPagination((prev) => ({ ...prev, currentPage: 1 }));
+            await loadInventory(1);
+        },
+        [loadInventory]
+    );
+
+    // Clear filters
+    const clearFilters = useCallback(async () => {
+        logger.info("Clearing filters");
+        setFilters({
+            search: "",
+            category: "",
+            status: "",
+            minPrice: "",
+            maxPrice: "",
+            expiryStatus: "",
+            sortBy: "product.name",
+            sortOrder: "asc",
+        });
+        setPagination((prev) => ({ ...prev, currentPage: 1 }));
+        await loadInventory(1);
+    }, [loadInventory]);
+
+    // Change page
+    const changePage = useCallback(
+        (page) => {
+            if (page >= 1 && page <= pagination.totalPages) {
+                setPagination((prev) => ({ ...prev, currentPage: page }));
+                loadInventory(page);
+            }
+        },
+        [pagination.totalPages, loadInventory]
+    );
+
+    // Change items per page
+    const changeLimit = useCallback(
+        (limit) => {
+            setPagination((prev) => ({ ...prev, limit, currentPage: 1 }));
+            loadInventory(1);
+        },
+        [loadInventory]
+    );
+
+    // === UTILITY FUNCTIONS ===
+
+    // Clear error
     const clearError = useCallback(() => {
         setError(null);
     }, []);
 
-    // Context value
+    // Refresh current data
+    const refresh = useCallback(() => {
+        loadInventory(pagination.currentPage);
+    }, [loadInventory, pagination.currentPage]);
+
+    // === CONTEXT VALUE ===
     const value = {
+        // Data
         inventory,
         lowStockItems,
         nearExpiryItems,
         expiredItems,
         summary,
-        isLoading,
+        pagination,
+        filters,
+
+        // State
+        loading,
         error,
-        fetchInventory,
-        fetchLowStock,
-        fetchNearExpiry,
+
+        // Main operations
+        loadInventory,
+        loadLowStock,
+        loadNearExpiry,
+        loadExpired,
+
+        // Product operations
         addProduct,
         updateProduct,
         removeProduct,
+
+        // Filter & pagination
+        applyFilters,
+        clearFilters,
+        changePage,
+        changeLimit,
+
+        // Utilities
         clearError,
+        refresh,
     };
 
     return (
