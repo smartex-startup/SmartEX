@@ -128,15 +128,21 @@ const SearchAndFilters = () => {
                         onClick={() => setShowFilters(!showFilters)}
                         className={`px-4 py-2 border rounded-md flex items-center gap-2 transition-colors ${
                             showFilters
-                                ? "bg-primary border-primary text-text-inverse"
+                                ? "bg-primary/10 border-primary text-text-secondary"
                                 : "border-gray-300 text-text-secondary hover:bg-gray-50"
                         }`}
                     >
                         <FaFilter className="h-4 w-4" />
                         Filters
                         {hasActiveFilters && (
-                            <span className="bg-primary text-text-inverse text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                !
+                            <span className="rounded-full w-5 h-5 flex items-center justify-center">
+                                (
+                                {
+                                    Object.values(formFilters).filter(
+                                        (value) => value !== ""
+                                    ).length
+                                }
+                                )
                             </span>
                         )}
                         {showFilters ? (
