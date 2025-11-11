@@ -1,10 +1,11 @@
 import React from "react";
-import { FaBox, FaEdit, FaEye, FaImage } from "react-icons/fa";
+import { Link } from "react-router-dom";
+import { FaBox, FaEdit, FaEye, FaImage, FaPlus } from "react-icons/fa";
 import { useInventory } from "../../context/InventoryContext.jsx";
 import InventoryTableSkeleton from "./InventoryTableSkeleton.jsx";
 
 const InventoryTable = () => {
-    const { inventory, loading } = useInventory();
+    const { inventory, loading, summary, filters } = useInventory();
 
     // Ensure inventory is always an array
     const inventoryItems = Array.isArray(inventory) ? inventory : [];
@@ -173,18 +174,40 @@ const InventoryTable = () => {
             {/* Table Body */}
             <div className="min-h-[400px]">
                 {inventoryItems.length === 0 ? (
-                    // Empty state
+                    // Comprehensive empty state
                     <div className="p-12 text-center">
                         <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
                             <FaBox className="w-12 h-12 text-text-quaternary" />
                         </div>
                         <h3 className="text-lg font-medium text-text-primary mb-2">
-                            No inventory items found
+                            No products found
                         </h3>
                         <p className="text-text-tertiary mb-6">
-                            No items match your current filters. Try adjusting
-                            your search or filters.
+                            {summary.totalProducts === 0 &&
+                            !filters.search &&
+                            !filters.category &&
+                            !filters.status &&
+                            !filters.expiryStatus &&
+                            !filters.minPrice &&
+                            !filters.maxPrice
+                                ? "Get started by adding products from the catalog to your inventory."
+                                : "No products match your current filters. Try adjusting your search or filters."}
                         </p>
+                        {summary.totalProducts === 0 &&
+                            !filters.search &&
+                            !filters.category &&
+                            !filters.status &&
+                            !filters.expiryStatus &&
+                            !filters.minPrice &&
+                            !filters.maxPrice && (
+                                <Link
+                                    to="/inventory/add"
+                                    className="inline-flex items-center bg-primary text-text-inverse px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+                                >
+                                    <FaPlus className="w-4 h-4 mr-2" />
+                                    Add Your First Product
+                                </Link>
+                            )}
                     </div>
                 ) : (
                     inventoryItems.map((item) => (
@@ -204,9 +227,9 @@ const InventoryTable = () => {
                                                 item.product.name
                                             }
                                             className="w-12 h-12 rounded object-cover"
-                                            onError={(e) => {
-                                                e.target.style.display = "none";
-                                            }}
+                                            // onError={(e) => {
+                                            //     e.target.style.display = "none";
+                                            // }}
                                         />
                                     ) : (
                                         <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
@@ -228,7 +251,7 @@ const InventoryTable = () => {
                             {/* Category */}
                             <div className="col-span-2 flex items-center">
                                 <span className="text-sm text-text-secondary">
-                                    {item.product?.category || "-"}
+                                    {item?.category.name || "-"}
                                 </span>
                             </div>
 

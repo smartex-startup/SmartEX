@@ -49,14 +49,17 @@ export const InventoryProvider = ({ children }) => {
 
     // Load inventory with filters and pagination
     const loadInventory = useCallback(
-        async (page = 1) => {
+        async (page = 1, customFilters = null) => {
             setLoading(true);
             setError(null);
 
             try {
+                // Use custom filters if provided, otherwise use current filters state
+                const currentFilters = customFilters || filters;
+
                 // Prepare query parameters
                 const queryParams = {
-                    ...filters,
+                    ...currentFilters,
                     page,
                     limit: pagination.limit,
                 };
@@ -120,8 +123,8 @@ export const InventoryProvider = ({ children }) => {
                 setLoading(false);
             }
         },
-        [filters, pagination.limit]
-    );
+        []
+    ); // No dependencies to avoid loops
 
     // Load low stock items
     const loadLowStock = useCallback(async () => {
@@ -255,15 +258,16 @@ export const InventoryProvider = ({ children }) => {
             logger.info("Applying filters:", newFilters);
             setFilters((prev) => ({ ...prev, ...newFilters }));
             setPagination((prev) => ({ ...prev, currentPage: 1 }));
-            await loadInventory(1);
+            // Pass the new filters directly to loadInventory to avoid state timing issues
+            await loadInventory(1, { ...filters, ...newFilters });
         },
-        [loadInventory]
+        [loadInventory, filters]
     );
 
     // Clear filters
     const clearFilters = useCallback(async () => {
         logger.info("Clearing filters");
-        setFilters({
+        const clearedFilters = {
             search: "",
             category: "",
             status: "",
@@ -272,9 +276,10 @@ export const InventoryProvider = ({ children }) => {
             expiryStatus: "",
             sortBy: "product.name",
             sortOrder: "asc",
-        });
+        };
+        setFilters(clearedFilters);
         setPagination((prev) => ({ ...prev, currentPage: 1 }));
-        await loadInventory(1);
+        await loadInventory(1, clearedFilters);
     }, [loadInventory]);
 
     // Change page
@@ -282,19 +287,19 @@ export const InventoryProvider = ({ children }) => {
         (page) => {
             if (page >= 1 && page <= pagination.totalPages) {
                 setPagination((prev) => ({ ...prev, currentPage: page }));
-                loadInventory(page);
+                loadInventory(page, filters);
             }
         },
-        [pagination.totalPages, loadInventory]
+        [pagination.totalPages, loadInventory, filters]
     );
 
     // Change items per page
     const changeLimit = useCallback(
         (limit) => {
             setPagination((prev) => ({ ...prev, limit, currentPage: 1 }));
-            loadInventory(1);
+            loadInventory(1, filters);
         },
-        [loadInventory]
+        [loadInventory, filters]
     );
 
     // === UTILITY FUNCTIONS ===
@@ -306,8 +311,8 @@ export const InventoryProvider = ({ children }) => {
 
     // Refresh current data
     const refresh = useCallback(() => {
-        loadInventory(pagination.currentPage);
-    }, [loadInventory, pagination.currentPage]);
+        loadInventory(pagination.currentPage, filters);
+    }, [loadInventory, pagination.currentPage, filters]);
 
     // === CONTEXT VALUE ===
     const value = {

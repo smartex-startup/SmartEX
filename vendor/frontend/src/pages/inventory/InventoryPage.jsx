@@ -112,32 +112,6 @@ const InventoryPage = () => {
 
             {/* Pagination */}
             <Pagination />
-
-            {/* Empty State for No Results */}
-            {!loading && (!inventory || inventory.length === 0) && !error && (
-                <div className="bg-white rounded-lg shadow p-12 text-center">
-                    <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <FaBox className="w-12 h-12 text-text-quaternary" />
-                    </div>
-                    <h3 className="text-lg font-medium text-text-primary mb-2">
-                        No products found
-                    </h3>
-                    <p className="text-text-tertiary mb-6">
-                        {pagination.totalItems === 0
-                            ? "Get started by adding products from the catalog to your inventory."
-                            : "No products match your current filters. Try adjusting your search or filters."}
-                    </p>
-                    {pagination.totalItems === 0 && (
-                        <Link
-                            to="/inventory/add"
-                            className="inline-flex items-center bg-primary text-text-inverse px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
-                        >
-                            <FaPlus className="w-4 h-4 mr-2" />
-                            Add Your First Product
-                        </Link>
-                    )}
-                </div>
-            )}
         </div>
     );
 };
