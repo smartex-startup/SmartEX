@@ -12,7 +12,32 @@ const generateToken = (userId, role) => {
 };
 
 // Set cookie with token
-const setTokenCookie = (res, token) => {
+// const setTokenCookie = (res, token) => {
+//     const cookieOptions = {
+//         expires: new Date(
+//             Date.now() +
+//                 (parseInt(process.env.JWT_COOKIE_EXPIRE) || 30) *
+//                     24 *
+//                     60 *
+//                     60 *
+//                     1000
+//         ),
+//         httpOnly: true,
+//         sameSite: "strict",
+//     };
+
+//     if (process.env.NODE_ENV === "production") {
+//         cookieOptions.secure = true;
+//     }
+
+//     res.cookie("token", token, cookieOptions);
+// };
+
+const setTokenCookie = (req, res, token) => {
+    const isLocalhost =
+        req.hostname === "localhost" || req.hostname === "127.0.0.1";
+    const isSecure = req.secure || req.headers["x-forwarded-proto"] === "https";
+
     const cookieOptions = {
         expires: new Date(
             Date.now() +
@@ -23,12 +48,9 @@ const setTokenCookie = (res, token) => {
                     1000
         ),
         httpOnly: true,
-        sameSite: "strict",
+        sameSite: isLocalhost ? "lax" : "none",
+        secure: !isLocalhost && isSecure,
     };
-
-    if (process.env.NODE_ENV === "production") {
-        cookieOptions.secure = true;
-    }
 
     res.cookie("token", token, cookieOptions);
 };

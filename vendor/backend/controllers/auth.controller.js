@@ -26,7 +26,7 @@ const login = async (req, res) => {
         const result = await authenticateVendor(email, password);
 
         // Set cookie
-        setTokenCookie(res, result.token);
+        setTokenCookie(req, res, result.token);
 
         return apiResponse.success(res, "Login successful", result.user);
     } catch (error) {
