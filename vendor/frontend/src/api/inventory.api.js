@@ -48,6 +48,31 @@ export const getProduct = async (productId) => {
     }
 };
 
+// Check if vendor has this master product in their inventory
+export const getVendorProductByMasterProductId = async (masterProductId) => {
+    try {
+        logger.info(
+            `Checking if vendor has master product: ${masterProductId}...`
+        );
+        const response = await apiClient.get(
+            `/inventory/by-product/${masterProductId}`
+        );
+        logger.info("Vendor product check completed");
+        return response.data;
+    } catch (error) {
+        if (error.response?.status === 404) {
+            // Product not found in vendor inventory - this is expected for new products
+            logger.info("Product not found in vendor inventory - new product");
+            return { success: false, data: null };
+        }
+        logger.error(
+            "Failed to check vendor product:",
+            error.response?.data?.message || error.message
+        );
+        throw error;
+    }
+};
+
 // Add product to inventory
 export const addProduct = async (productData) => {
     try {

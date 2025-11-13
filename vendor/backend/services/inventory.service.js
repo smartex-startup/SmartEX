@@ -614,6 +614,42 @@ const fetchSingleProduct = async (vendorProductId, userId) => {
     }
 };
 
+// Fetch vendor product by master product ID
+const fetchVendorProductByMasterProductId = async (masterProductId, userId) => {
+    try {
+        // Get vendor from user
+        const vendor = await Vendor.findOne({ userId });
+        if (!vendor) {
+            throw new Error("Vendor not found");
+        }
+
+        const vendorProduct = await VendorProduct.findOne({
+            product: masterProductId,
+            vendor: vendor._id,
+        })
+            .populate(
+                "product",
+                "name brand category images description basePrice"
+            )
+            .populate("vendor", "businessName storeDetails");
+
+        if (!vendorProduct) {
+            throw new Error("Product not found in your inventory");
+        }
+
+        logger.info(
+            `Vendor product found for master product: ${vendorProduct.product.name}`
+        );
+        return vendorProduct;
+    } catch (error) {
+        logger.error(
+            "Fetch vendor product by master product ID error:",
+            error.message
+        );
+        throw error;
+    }
+};
+
 // Update stock levels for a product
 const updateStockLevels = async (vendorProductId, userId, stockData) => {
     try {
@@ -1170,6 +1206,7 @@ export {
     updateProductInventory,
     removeFromInventory,
     fetchSingleProduct,
+    fetchVendorProductByMasterProductId,
     updateStockLevels,
     fetchLowStockItems,
     processBatchUpdate,

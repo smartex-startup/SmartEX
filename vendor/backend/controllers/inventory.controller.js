@@ -4,6 +4,7 @@ import {
     updateProductInventory,
     removeFromInventory,
     fetchSingleProduct,
+    fetchVendorProductByMasterProductId,
     updateStockLevels,
     fetchLowStockItems,
     processBatchUpdate,
@@ -158,6 +159,35 @@ const getProduct = async (req, res) => {
     }
 };
 
+// Get vendor product by master product ID
+const getVendorProductByMasterProductId = async (req, res) => {
+    try {
+        const vendorProduct = await fetchVendorProductByMasterProductId(
+            req.params.masterProductId,
+            req.user.id
+        );
+        return apiResponse.success(
+            res,
+            "Vendor product retrieved successfully",
+            vendorProduct
+        );
+    } catch (error) {
+        logger.error(
+            "Get vendor product by master product ID controller error:",
+            error.message
+        );
+
+        if (error.message.includes("not found")) {
+            return apiResponse.notFound(res, error.message);
+        }
+
+        return apiResponse.serverError(
+            res,
+            "Failed to retrieve vendor product"
+        );
+    }
+};
+
 // Update stock levels for a product
 const updateStock = async (req, res) => {
     try {
@@ -309,6 +339,7 @@ export {
     updateProduct,
     removeProduct,
     getProduct,
+    getVendorProductByMasterProductId,
     updateStock,
     getLowStock,
     batchUpdate,

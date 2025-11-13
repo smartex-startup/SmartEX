@@ -5,6 +5,7 @@ import {
     updateProduct,
     removeProduct,
     getProduct,
+    getVendorProductByMasterProductId,
     updateStock,
     getLowStock,
     batchUpdate,
@@ -31,6 +32,12 @@ router.get("/expired", auth, requireRole("vendor"), getExpired);
 router.put("/batches/:id", auth, requireRole("vendor"), updateBatches);
 
 // Individual product routes
+router.get(
+    "/by-product/:masterProductId",
+    auth,
+    requireRole("vendor"),
+    getVendorProductByMasterProductId
+);
 router.get("/:id", auth, requireRole("vendor"), getProduct);
 router.put("/:id", auth, requireRole("vendor"), updateProduct);
 router.delete("/:id", auth, requireRole("vendor"), removeProduct);

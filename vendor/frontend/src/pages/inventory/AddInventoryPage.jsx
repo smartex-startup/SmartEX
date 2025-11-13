@@ -1,39 +1,485 @@
-import React from "react";
-import { FaChevronRight, FaPlus } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+    FaArrowLeft,
+    FaArrowRight,
+    FaSave,
+    FaCheck,
+    FaSearch,
+    FaDollarSign,
+    FaBoxes,
+    FaCalendarAlt,
+    FaCog,
+} from "react-icons/fa";
+import ProductSearch from "../../components/inventory/add/ProductSearch";
+import SelectedProductPreview from "../../components/inventory/add/SelectedProductPreview";
+import VendorPricing from "../../components/inventory/add/VendorPricing";
+import VendorInventory from "../../components/inventory/add/VendorInventory";
+import VendorExpiryBatches from "../../components/inventory/add/VendorExpiryBatches";
+import VendorSettings from "../../components/inventory/add/VendorSettings";
+import AddInventoryReview from "../../components/inventory/add/AddInventoryReview";
+import { addProduct } from "../../api/inventory.api";
+import Loader from "../../components/common/Loader";
 
 const AddInventoryPage = () => {
+    const navigate = useNavigate();
+
+    // Multi-step form state
+    const [currentStep, setCurrentStep] = useState(0);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    // Form data
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [pricingData, setPricingData] = useState({
+        costPrice: 0,
+        sellingPrice: 0,
+        discountPercentage: 0,
+        finalPrice: 0,
+        margin: 0,
+    });
+    const [inventoryData, setInventoryData] = useState({
+        currentStock: 0,
+        addStock: 0,
+        minStockLevel: 0,
+        maxStockLevel: 0,
+        reorderPoint: 0,
+    });
+    const [expiryData, setExpiryData] = useState({
+        enableBatchTracking: false,
+        batches: [],
+    });
+    const [settingsData, setSettingsData] = useState({
+        isVisible: true,
+        allowOnlineOrders: true,
+        enableLocalDelivery: false,
+        deliveryRadius: 5,
+        deliveryFee: 0,
+        freeDeliveryThreshold: 0,
+        customTags: [],
+        specialNotes: "",
+        storageConditions: "",
+        handlingInstructions: "",
+        warrantyPeriod: 0,
+        returnPolicy: "",
+    });
+
+    // Steps configuration
+    const steps = [
+        {
+            id: "product",
+            title: "Select Product",
+            icon: FaSearch,
+            component: ProductSearch,
+            props: {
+                onProductSelect: setSelectedProduct,
+                selectedProduct: selectedProduct,
+            },
+        },
+        {
+            id: "pricing",
+            title: "Set Pricing",
+            icon: FaDollarSign,
+            component: VendorPricing,
+            props: {
+                pricingData: pricingData,
+                onPricingChange: setPricingData,
+                selectedProduct: selectedProduct,
+            },
+        },
+        {
+            id: "inventory",
+            title: "Manage Stock",
+            icon: FaBoxes,
+            component: VendorInventory,
+            props: {
+                inventoryData: inventoryData,
+                onInventoryChange: setInventoryData,
+                selectedProduct: selectedProduct,
+            },
+        },
+        {
+            id: "expiry",
+            title: "Expiry & Batches",
+            icon: FaCalendarAlt,
+            component: VendorExpiryBatches,
+            props: {
+                expiryData: expiryData,
+                onExpiryChange: setExpiryData,
+                selectedProduct: selectedProduct,
+                inventoryData: inventoryData,
+            },
+        },
+        {
+            id: "settings",
+            title: "Settings",
+            icon: FaCog,
+            component: VendorSettings,
+            props: {
+                settingsData: settingsData,
+                onSettingsChange: setSettingsData,
+                selectedProduct: selectedProduct,
+            },
+        },
+        {
+            id: "review",
+            title: "Review & Confirm",
+            icon: FaCheck,
+            component: AddInventoryReview,
+            props: {
+                selectedProduct: selectedProduct,
+                pricingData: pricingData,
+                inventoryData: inventoryData,
+                expiryData: expiryData,
+                settingsData: settingsData,
+                onEditSection: (sectionId) => {
+                    const stepIndex = steps.findIndex(
+                        (step) => step.id === sectionId
+                    );
+                    if (stepIndex !== -1) {
+                        setCurrentStep(stepIndex);
+                    }
+                },
+                isSubmitting: isSubmitting,
+            },
+        },
+    ];
+
+    const validateStep = (stepIndex) => {
+        const step = steps[stepIndex];
+
+        switch (step.id) {
+            case "product":
+                return selectedProduct !== null;
+
+            case "pricing":
+                return (
+                    pricingData.costPrice > 0 && pricingData.sellingPrice > 0
+                );
+
+            case "inventory":
+                return inventoryData.addStock > 0;
+
+            case "expiry":
+                if (expiryData.enableBatchTracking) {
+                    const totalBatchQuantity = expiryData.batches.reduce(
+                        (sum, batch) => sum + (batch.quantity || 0),
+                        0
+                    );
+                    return totalBatchQuantity === inventoryData.addStock;
+                }
+                return true;
+
+            case "settings":
+                return true; // Optional step
+
+            case "review":
+                return true;
+
+            default:
+                return true;
+        }
+    };
+
+    const nextStep = () => {
+        if (validateStep(currentStep)) {
+            setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+        } else {
+            console.error(
+                "Please complete all required fields before proceeding"
+            );
+        }
+    };
+
+    const prevStep = () => {
+        setCurrentStep((prev) => Math.max(prev - 1, 0));
+    };
+
+    const prepareSubmissionData = () => {
+        const submissionData = {
+            productId: selectedProduct.id,
+            pricing: {
+                costPrice: pricingData.costPrice,
+                sellingPrice: pricingData.sellingPrice,
+                discountPercentage: pricingData.discountPercentage,
+                finalPrice: pricingData.finalPrice,
+            },
+            inventory: {
+                addStock: inventoryData.addStock,
+                minStockLevel: inventoryData.minStockLevel,
+                maxStockLevel: inventoryData.maxStockLevel,
+                reorderPoint: inventoryData.reorderPoint,
+            },
+            expiry: {
+                enableBatchTracking: expiryData.enableBatchTracking,
+                batches: expiryData.batches.map((batch) => ({
+                    batchNumber: batch.batchNumber,
+                    quantity: batch.quantity,
+                    expiryDate: batch.expiryDate,
+                    purchaseDate: batch.purchaseDate,
+                    manufacturingDate: batch.manufacturingDate,
+                    notes: batch.notes,
+                })),
+            },
+            settings: {
+                isVisible: settingsData.isVisible,
+                allowOnlineOrders: settingsData.allowOnlineOrders,
+                enableLocalDelivery: settingsData.enableLocalDelivery,
+                deliveryRadius: settingsData.deliveryRadius,
+                deliveryFee: settingsData.deliveryFee,
+                freeDeliveryThreshold: settingsData.freeDeliveryThreshold,
+                customTags: settingsData.customTags,
+                specialNotes: settingsData.specialNotes,
+                storageConditions: settingsData.storageConditions,
+                handlingInstructions: settingsData.handlingInstructions,
+                warrantyPeriod: settingsData.warrantyPeriod,
+                returnPolicy: settingsData.returnPolicy,
+            },
+        };
+
+        return submissionData;
+    };
+
+    const handleSubmit = async () => {
+        if (!validateStep(currentStep)) {
+            console.error("Please complete all required fields");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const submissionData = prepareSubmissionData();
+
+            await addProduct(submissionData);
+
+            console.log("Product added to inventory successfully!");
+            navigate("/inventory");
+        } catch (error) {
+            console.error("Error adding to inventory:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const CurrentStepComponent = steps[currentStep].component;
+    const isFirstStep = currentStep === 0;
+    const isLastStep = currentStep === steps.length - 1;
+    const isStepValid = validateStep(currentStep);
+
+    if (loading) {
+        return <Loader />;
+    }
+
     return (
-        <div className="space-y-6">
-            {/* Page Header */}
-            <div>
-                <nav className="flex items-center space-x-2 text-sm text-text-tertiary mb-4">
-                    <span>Inventory</span>
-                    <FaChevronRight className="w-4 h-4" />
-                    <span className="text-text-primary">Add to Inventory</span>
-                </nav>
-                <h1 className="text-2xl font-semibold text-text-primary">
-                    Add to Inventory
-                </h1>
-                <p className="text-text-secondary mt-1">
-                    Search products from catalog and add them to your inventory
-                    with stock details
-                </p>
+        <div className="min-h-screen bg-background px-2 sm:px-4 lg:px-6 py-4 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
+            {/* Header */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6 max-w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 min-w-0">
+                        <h1 className="text-lg sm:text-2xl font-bold text-text-primary truncate">
+                            Add Product to Inventory
+                        </h1>
+                    </div>
+                </div>
+
+                {/* Progress Steps */}
+                <div className="mt-4 sm:mt-6">
+                    <div className="flex items-start justify-between gap-2 sm:gap-4 overflow-x-auto py-2">
+                        {steps.map((step, index) => {
+                            const Icon = step.icon;
+                            const isActive = index === currentStep;
+                            const isCompleted =
+                                index < currentStep ||
+                                (index === currentStep && isStepValid);
+                            const isClickable = index <= currentStep;
+
+                            return (
+                                <div
+                                    key={step.id}
+                                    className="flex flex-col items-center min-w-0 shrink-0"
+                                >
+                                    {/* Step Icon */}
+                                    <button
+                                        onClick={() =>
+                                            isClickable &&
+                                            !isSubmitting &&
+                                            setCurrentStep(index)
+                                        }
+                                        disabled={!isClickable || isSubmitting}
+                                        className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 transition-all mb-1 ${
+                                            isCompleted
+                                                ? "bg-primary border-primary text-white"
+                                                : isActive
+                                                ? "bg-white border-primary text-primary"
+                                                : "bg-gray-100 border-gray-300 text-text-quaternary"
+                                        } ${
+                                            isClickable && !isSubmitting
+                                                ? "hover:scale-105 cursor-pointer"
+                                                : "cursor-not-allowed"
+                                        }`}
+                                    >
+                                        <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
+                                    </button>
+
+                                    {/* Step Title */}
+                                    <p
+                                        className={`text-[10px] sm:text-xs font-medium text-center max-w-16 sm:max-w-20 leading-tight ${
+                                            isActive
+                                                ? "text-primary"
+                                                : isCompleted
+                                                ? "text-secondary"
+                                                : "text-text-quaternary"
+                                        }`}
+                                    >
+                                        {step.title}
+                                    </p>
+
+                                    {/* Connector Line */}
+                                    {index < steps.length - 1 && (
+                                        <div
+                                            className={`absolute top-4 sm:top-5 left-1/2 w-8 sm:w-12 lg:w-16 h-0.5 transform translate-x-2 sm:translate-x-3 lg:translate-x-4 ${
+                                                isCompleted
+                                                    ? "bg-primary"
+                                                    : "bg-gray-300"
+                                            }`}
+                                            style={{ zIndex: -1 }}
+                                        ></div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Top Navigation - Mobile Friendly */}
+                <div className="mt-4 sm:mt-6 pt-4 border-t border-gray-200">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <button
+                            onClick={prevStep}
+                            disabled={isFirstStep || isSubmitting}
+                            className={`w-full sm:w-auto flex items-center justify-center px-4 py-2 border rounded-md transition-colors ${
+                                isFirstStep || isSubmitting
+                                    ? "border-gray-300 text-text-quaternary cursor-not-allowed"
+                                    : "border-gray-300 text-text-secondary hover:bg-gray-50 hover:text-text-primary"
+                            }`}
+                        >
+                            <FaArrowLeft className="w-4 h-4 mr-2" />
+                            Previous
+                        </button>
+
+                        <div className="flex gap-3 w-full sm:w-auto">
+                            {!isLastStep ? (
+                                <button
+                                    onClick={nextStep}
+                                    disabled={!isStepValid || isSubmitting}
+                                    className={`flex-1 sm:flex-none flex items-center justify-center px-6 py-2 rounded-md transition-colors ${
+                                        isStepValid && !isSubmitting
+                                            ? "bg-primary text-white hover:bg-primary/90"
+                                            : "bg-gray-300 text-text-quaternary cursor-not-allowed"
+                                    }`}
+                                >
+                                    Next
+                                    <FaArrowRight className="w-4 h-4 ml-2" />
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={!isStepValid || isSubmitting}
+                                    className={`flex-1 sm:flex-none flex items-center justify-center px-6 py-2 rounded-md transition-colors ${
+                                        isStepValid && !isSubmitting
+                                            ? "bg-primary text-white hover:bg-primary/90"
+                                            : "bg-gray-300 text-text-quaternary cursor-not-allowed"
+                                    }`}
+                                >
+                                    {isSubmitting ? (
+                                        <div className="flex items-center">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                            Adding...
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <FaSave className="w-4 h-4 mr-2" />
+                                            Add to Inventory
+                                        </>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Content */}
-            <div className="bg-white rounded-lg shadow">
-                <div className="p-6">
-                    <div className="text-center py-12">
-                        <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                            <FaPlus className="w-12 h-12 text-blue-500" />
-                        </div>
-                        <h3 className="text-lg font-medium text-text-primary mb-2">
-                            Add to Inventory
-                        </h3>
-                        <p className="text-text-tertiary">
-                            Search products from the catalog and add them to
-                            your inventory with stock quantities and pricing.
-                        </p>
+            {/* Selected Product Preview (when product is selected) */}
+            {selectedProduct && currentStep > 0 && (
+                <div className="max-w-full overflow-hidden">
+                    <SelectedProductPreview
+                        product={selectedProduct}
+                        onClearSelection={() => {
+                            setSelectedProduct(null);
+                            setCurrentStep(0);
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Step Content */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6 max-w-full overflow-x-hidden">
+                <CurrentStepComponent {...steps[currentStep].props} />
+            </div>
+
+            {/* Navigation */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 max-w-full">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <button
+                        onClick={prevStep}
+                        disabled={isFirstStep || isSubmitting}
+                        className={`w-full sm:w-auto flex items-center justify-center px-4 py-2 border rounded-md transition-colors ${
+                            isFirstStep || isSubmitting
+                                ? "border-gray-300 text-text-quaternary cursor-not-allowed"
+                                : "border-gray-300 text-text-secondary hover:bg-gray-50 hover:text-text-primary"
+                        }`}
+                    >
+                        <FaArrowLeft className="w-4 h-4 mr-2" />
+                        Previous
+                    </button>
+
+                    <div className="flex gap-3 w-full sm:w-auto">
+                        {!isLastStep ? (
+                            <button
+                                onClick={nextStep}
+                                disabled={!isStepValid || isSubmitting}
+                                className={`flex-1 sm:flex-none flex items-center justify-center px-6 py-2 rounded-md transition-colors ${
+                                    isStepValid && !isSubmitting
+                                        ? "bg-primary text-white hover:bg-primary/90"
+                                        : "bg-gray-300 text-text-quaternary cursor-not-allowed"
+                                }`}
+                            >
+                                Next
+                                <FaArrowRight className="w-4 h-4 ml-2" />
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSubmit}
+                                disabled={!isStepValid || isSubmitting}
+                                className={`flex-1 sm:flex-none flex items-center justify-center px-6 py-2 rounded-md transition-colors ${
+                                    isStepValid && !isSubmitting
+                                        ? "bg-primary text-white hover:bg-primary/90"
+                                        : "bg-gray-300 text-text-quaternary cursor-not-allowed"
+                                }`}
+                            >
+                                {isSubmitting ? (
+                                    <div className="flex items-center">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Adding...
+                                    </div>
+                                ) : (
+                                    <>
+                                        <FaSave className="w-4 h-4 mr-2" />
+                                        Add to Inventory
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
