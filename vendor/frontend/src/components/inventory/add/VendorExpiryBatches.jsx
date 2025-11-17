@@ -22,7 +22,7 @@ const VendorExpiryBatches = ({
 
     useEffect(() => {
         const total = batches.reduce(
-            (sum, batch) => sum + (batch.quantity || 0),
+            (sum, batch) => sum + (parseInt(batch.quantity) || 0),
             0
         );
         setTotalBatchQuantity(total);
@@ -33,12 +33,10 @@ const VendorExpiryBatches = ({
             // Add a default batch when enabling tracking
             const newBatch = {
                 id: Date.now(),
-                batchNumber: `BATCH-${Date.now()}`,
+                batchNumber: "",
                 expiryDate: "",
-                quantity: addStock || 0,
-                purchaseDate: new Date().toISOString().split("T")[0],
+                quantity: "",
                 manufacturingDate: "",
-                notes: "",
             };
             onExpiryChange({
                 ...expiryData,
@@ -57,12 +55,10 @@ const VendorExpiryBatches = ({
     const addNewBatch = () => {
         const newBatch = {
             id: Date.now(),
-            batchNumber: `BATCH-${Date.now()}`,
+            batchNumber: "",
             expiryDate: "",
-            quantity: 0,
-            purchaseDate: new Date().toISOString().split("T")[0],
+            quantity: "",
             manufacturingDate: "",
-            notes: "",
         };
         onExpiryChange({
             ...expiryData,
@@ -76,7 +72,11 @@ const VendorExpiryBatches = ({
                 ? {
                       ...batch,
                       [field]:
-                          field === "quantity" ? parseInt(value) || 0 : value,
+                          field === "quantity"
+                              ? value === ""
+                                  ? ""
+                                  : parseInt(value) || ""
+                              : value,
                   }
                 : batch
         );
@@ -202,11 +202,7 @@ const VendorExpiryBatches = ({
                                         batchNumber: "SINGLE",
                                         expiryDate: e.target.value,
                                         quantity: addStock,
-                                        purchaseDate: new Date()
-                                            .toISOString()
-                                            .split("T")[0],
                                         manufacturingDate: "",
-                                        notes: "",
                                     };
                                     onExpiryChange({
                                         ...expiryData,
@@ -309,11 +305,11 @@ const VendorExpiryBatches = ({
                                         )}
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         {/* Batch Number */}
                                         <div>
                                             <label className="block text-xs font-medium text-text-secondary mb-1">
-                                                Batch Number
+                                                Batch Number *
                                             </label>
                                             <input
                                                 type="text"
@@ -327,13 +323,14 @@ const VendorExpiryBatches = ({
                                                 }
                                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                                                 placeholder="Enter batch number"
+                                                required
                                             />
                                         </div>
 
                                         {/* Quantity */}
                                         <div>
                                             <label className="block text-xs font-medium text-text-secondary mb-1">
-                                                Quantity
+                                                Quantity *
                                             </label>
                                             <div className="relative">
                                                 <input
@@ -346,9 +343,10 @@ const VendorExpiryBatches = ({
                                                             e.target.value
                                                         )
                                                     }
-                                                    min="0"
+                                                    min="1"
                                                     className="w-full px-2 py-1 pr-12 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                                                     placeholder="0"
+                                                    required
                                                 />
                                                 <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-text-quaternary text-xs">
                                                     {selectedProduct?.unit ||
@@ -360,7 +358,7 @@ const VendorExpiryBatches = ({
                                         {/* Expiry Date */}
                                         <div>
                                             <label className="block text-xs font-medium text-text-secondary mb-1">
-                                                Expiry Date
+                                                Expiry Date *
                                             </label>
                                             <input
                                                 type="date"
@@ -373,6 +371,7 @@ const VendorExpiryBatches = ({
                                                     )
                                                 }
                                                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                                                required
                                             />
                                             {expiryStatus && (
                                                 <div
@@ -385,64 +384,6 @@ const VendorExpiryBatches = ({
                                                         : `${expiryStatus.days} days`}
                                                 </div>
                                             )}
-                                        </div>
-
-                                        {/* Purchase Date */}
-                                        <div>
-                                            <label className="block text-xs font-medium text-text-secondary mb-1">
-                                                Purchase Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                value={batch.purchaseDate}
-                                                onChange={(e) =>
-                                                    updateBatch(
-                                                        batch.id,
-                                                        "purchaseDate",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                                            />
-                                        </div>
-
-                                        {/* Manufacturing Date */}
-                                        <div>
-                                            <label className="block text-xs font-medium text-text-secondary mb-1">
-                                                Manufacturing Date
-                                            </label>
-                                            <input
-                                                type="date"
-                                                value={batch.manufacturingDate}
-                                                onChange={(e) =>
-                                                    updateBatch(
-                                                        batch.id,
-                                                        "manufacturingDate",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                                            />
-                                        </div>
-
-                                        {/* Notes */}
-                                        <div>
-                                            <label className="block text-xs font-medium text-text-secondary mb-1">
-                                                Notes
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={batch.notes}
-                                                onChange={(e) =>
-                                                    updateBatch(
-                                                        batch.id,
-                                                        "notes",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                                                placeholder="Optional notes"
-                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -508,26 +449,6 @@ const VendorExpiryBatches = ({
                     )}
                 </div>
             )}
-
-            {/* Expiry Management Tips */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h5 className="text-sm font-medium text-blue-800 mb-2 flex items-center">
-                    <FaInfoCircle className="w-4 h-4 mr-2" />
-                    Expiry Management Tips
-                </h5>
-                <ul className="text-sm text-blue-700 space-y-1">
-                    <li>
-                        • Use batch tracking for products with varying expiry
-                        dates
-                    </li>
-                    <li>• Monitor products expiring within 30 days</li>
-                    <li>
-                        • Implement FIFO (First In, First Out) for stock
-                        rotation
-                    </li>
-                    <li>• Set alerts for products nearing expiry</li>
-                </ul>
-            </div>
         </div>
     );
 };

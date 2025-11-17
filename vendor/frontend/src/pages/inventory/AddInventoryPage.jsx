@@ -9,17 +9,16 @@ import {
     FaDollarSign,
     FaBoxes,
     FaCalendarAlt,
-    FaCog,
 } from "react-icons/fa";
 import ProductSearch from "../../components/inventory/add/ProductSearch";
 import SelectedProductPreview from "../../components/inventory/add/SelectedProductPreview";
 import VendorPricing from "../../components/inventory/add/VendorPricing";
 import VendorInventory from "../../components/inventory/add/VendorInventory";
 import VendorExpiryBatches from "../../components/inventory/add/VendorExpiryBatches";
-import VendorSettings from "../../components/inventory/add/VendorSettings";
 import AddInventoryReview from "../../components/inventory/add/AddInventoryReview";
 import { addProduct } from "../../api/inventory.api";
 import Loader from "../../components/common/Loader";
+import logger from "../../utils/logger.util";
 
 const AddInventoryPage = () => {
     const navigate = useNavigate();
@@ -42,8 +41,6 @@ const AddInventoryPage = () => {
         currentStock: 0,
         addStock: 0,
         minStockLevel: 0,
-        maxStockLevel: 0,
-        reorderPoint: 0,
     });
     const [expiryData, setExpiryData] = useState({
         enableBatchTracking: false,
@@ -111,17 +108,6 @@ const AddInventoryPage = () => {
             },
         },
         {
-            id: "settings",
-            title: "Settings",
-            icon: FaCog,
-            component: VendorSettings,
-            props: {
-                settingsData: settingsData,
-                onSettingsChange: setSettingsData,
-                selectedProduct: selectedProduct,
-            },
-        },
-        {
             id: "review",
             title: "Review & Confirm",
             icon: FaCheck,
@@ -162,16 +148,28 @@ const AddInventoryPage = () => {
 
             case "expiry":
                 if (expiryData.enableBatchTracking) {
+                    // Check if all batches have required fields filled
+                    const allBatchesValid = expiryData.batches.every(
+                        (batch) =>
+                            batch.batchNumber &&
+                            batch.batchNumber.trim() !== "" &&
+                            batch.quantity &&
+                            parseInt(batch.quantity) > 0 &&
+                            batch.expiryDate &&
+                            batch.expiryDate.trim() !== ""
+                    );
+
+                    if (!allBatchesValid) {
+                        return false;
+                    }
+
                     const totalBatchQuantity = expiryData.batches.reduce(
-                        (sum, batch) => sum + (batch.quantity || 0),
+                        (sum, batch) => sum + (parseInt(batch.quantity) || 0),
                         0
                     );
                     return totalBatchQuantity === inventoryData.addStock;
                 }
                 return true;
-
-            case "settings":
-                return true; // Optional step
 
             case "review":
                 return true;
@@ -197,31 +195,36 @@ const AddInventoryPage = () => {
 
     const prepareSubmissionData = () => {
         const submissionData = {
-            productId: selectedProduct.id,
+            productId: selectedProduct._id,
             pricing: {
                 costPrice: pricingData.costPrice,
                 sellingPrice: pricingData.sellingPrice,
                 discountPercentage: pricingData.discountPercentage,
                 finalPrice: pricingData.finalPrice,
+                margin: pricingData.margin,
             },
             inventory: {
-                addStock: inventoryData.addStock,
+                currentStock: inventoryData.addStock, // The stock we're adding becomes current stock
                 minStockLevel: inventoryData.minStockLevel,
-                maxStockLevel: inventoryData.maxStockLevel,
-                reorderPoint: inventoryData.reorderPoint,
+                maxStockLevel: 100, // Default value or from settings
             },
-            expiry: {
-                enableBatchTracking: expiryData.enableBatchTracking,
+            expiryTracking: {
+                hasExpiry:
+                    expiryData.enableBatchTracking ||
+                    (expiryData.batches && expiryData.batches.length > 0),
                 batches: expiryData.batches.map((batch) => ({
                     batchNumber: batch.batchNumber,
-                    quantity: batch.quantity,
+                    quantity: parseInt(batch.quantity) || 0,
                     expiryDate: batch.expiryDate,
-                    purchaseDate: batch.purchaseDate,
                     manufacturingDate: batch.manufacturingDate,
-                    notes: batch.notes,
                 })),
             },
             settings: {
+                autoRestock: false,
+                autoDiscountNearExpiry: true,
+                hideWhenOutOfStock: false,
+                maxOrderQuantity: 10,
+                minOrderQuantity: 1,
                 isVisible: settingsData.isVisible,
                 allowOnlineOrders: settingsData.allowOnlineOrders,
                 enableLocalDelivery: settingsData.enableLocalDelivery,
@@ -249,7 +252,7 @@ const AddInventoryPage = () => {
         setIsSubmitting(true);
         try {
             const submissionData = prepareSubmissionData();
-
+            logger.info(submissionData);
             await addProduct(submissionData);
 
             navigate("/inventory");

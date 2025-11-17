@@ -77,7 +77,7 @@ export const getVendorProductByMasterProductId = async (masterProductId) => {
 export const addProduct = async (productData) => {
     try {
         logger.info("Adding product to inventory...");
-        const response = await apiClient.post("/inventory", productData);
+        const response = await apiClient.post("/inventory/add", productData);
         logger.info("Product added successfully");
         return response.data;
     } catch (error) {

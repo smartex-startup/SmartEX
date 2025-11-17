@@ -6,10 +6,7 @@ import {
     FaCalendarAlt,
     FaDollarSign,
     FaBoxes,
-    FaCog,
     FaInfoCircle,
-    FaShippingFast,
-    FaTags,
 } from "react-icons/fa";
 
 const AddInventoryReview = ({
@@ -29,24 +26,9 @@ const AddInventoryReview = ({
         margin = 0,
     } = pricingData;
 
-    const {
-        addStock = 0,
-        minStockLevel = 0,
-        maxStockLevel = 0,
-        reorderPoint = 0,
-        currentStock = 0,
-    } = inventoryData;
+    const { addStock = 0, minStockLevel = 0, currentStock = 0 } = inventoryData;
 
     const { batches = [], enableBatchTracking = false } = expiryData;
-
-    const {
-        isVisible = true,
-        allowOnlineOrders = true,
-        enableLocalDelivery = false,
-        deliveryRadius = 0,
-        deliveryFee = 0,
-        customTags = [],
-    } = settingsData;
 
     // Validation checks
     const validations = {
@@ -209,8 +191,11 @@ const AddInventoryReview = ({
                                 {selectedProduct.brand}
                             </p>
                             <p className="text-xs text-text-tertiary">
-                                {selectedProduct.category} •{" "}
-                                {selectedProduct.unit}
+                                {typeof selectedProduct.category === "string"
+                                    ? selectedProduct.category
+                                    : selectedProduct.category?.name ||
+                                      "Uncategorized"}{" "}
+                                • {selectedProduct.unit}
                             </p>
                         </div>
                     </div>
@@ -290,7 +275,7 @@ const AddInventoryReview = ({
                     </button>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                         <p className="text-text-tertiary">Adding Stock</p>
                         <p className="font-medium text-text-primary">
@@ -307,12 +292,6 @@ const AddInventoryReview = ({
                         <p className="text-text-tertiary">Min Level</p>
                         <p className="font-medium text-text-primary">
                             {minStockLevel || "Not set"}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-text-tertiary">Reorder Point</p>
-                        <p className="font-medium text-text-primary">
-                            {reorderPoint || "Not set"}
                         </p>
                     </div>
                 </div>
@@ -401,96 +380,6 @@ const AddInventoryReview = ({
                         )}
                     </div>
                 )}
-            </div>
-
-            {/* Settings Summary */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-md font-medium text-text-primary flex items-center">
-                        <FaCog className="w-4 h-4 mr-2" />
-                        Settings
-                    </h4>
-                    <button
-                        type="button"
-                        onClick={() => onEditSection("settings")}
-                        className="text-primary hover:text-primary/80 text-sm flex items-center"
-                        disabled={isSubmitting}
-                    >
-                        <FaEdit className="w-3 h-3 mr-1" />
-                        Edit
-                    </button>
-                </div>
-
-                <div className="space-y-3 text-sm">
-                    {/* Visibility & Orders */}
-                    <div className="flex items-center justify-between">
-                        <span className="text-text-secondary">
-                            Product Visibility:
-                        </span>
-                        <span
-                            className={`font-medium ${
-                                isVisible
-                                    ? "text-secondary"
-                                    : "text-text-quaternary"
-                            }`}
-                        >
-                            {isVisible ? "Visible" : "Hidden"}
-                        </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <span className="text-text-secondary">
-                            Online Orders:
-                        </span>
-                        <span
-                            className={`font-medium ${
-                                allowOnlineOrders
-                                    ? "text-secondary"
-                                    : "text-text-quaternary"
-                            }`}
-                        >
-                            {allowOnlineOrders ? "Enabled" : "Disabled"}
-                        </span>
-                    </div>
-
-                    {/* Delivery */}
-                    {enableLocalDelivery && (
-                        <div className="flex items-center justify-between">
-                            <span className="text-text-secondary flex items-center">
-                                <FaShippingFast className="w-3 h-3 mr-1" />
-                                Local Delivery:
-                            </span>
-                            <span className="font-medium text-text-primary">
-                                {deliveryRadius}km radius
-                                {deliveryFee > 0 && ` • ₹${deliveryFee} fee`}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Tags */}
-                    {customTags.length > 0 && (
-                        <div className="flex items-start justify-between">
-                            <span className="text-text-secondary flex items-center">
-                                <FaTags className="w-3 h-3 mr-1" />
-                                Tags:
-                            </span>
-                            <div className="flex flex-wrap gap-1 max-w-xs">
-                                {customTags.slice(0, 3).map((tag, index) => (
-                                    <span
-                                        key={index}
-                                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary"
-                                    >
-                                        {tag}
-                                    </span>
-                                ))}
-                                {customTags.length > 3 && (
-                                    <span className="text-xs text-text-quaternary">
-                                        +{customTags.length - 3}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
             </div>
 
             {/* Final Notes */}
