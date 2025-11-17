@@ -11,6 +11,7 @@ import {
     searchProducts,
     getCategories,
     getProducts,
+    getProductsByCategory,
 } from "../../../api/products.api.js";
 import { getVendorProductByMasterProductId } from "../../../api/inventory.api.js";
 import Loader from "../../common/Loader.jsx";
@@ -24,8 +25,6 @@ const ProductSearch = ({ selectedProduct, onProductSelect }) => {
     const [selectedCategory, setSelectedCategory] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [existingProducts, setExistingProducts] = useState(new Set());
-    const [checkingInventory, setCheckingInventory] = useState(false);
 
     // Pagination state
     const [pagination, setPagination] = useState({
@@ -81,52 +80,12 @@ const ProductSearch = ({ selectedProduct, onProductSelect }) => {
                     hasNextPage: response.data.pagination?.hasNextPage || false,
                     hasPrevPage: response.data.pagination?.hasPrevPage || false,
                 });
-
-                // Check which products are already in inventory
-                checkExistingProducts(response.data.products || []);
             }
         } catch (err) {
             logger.error("Failed to load initial products:", err);
             setError("Failed to load products. Please try again.");
         } finally {
             setLoading(false);
-        }
-    };
-
-    // Function to check which products are already in vendor inventory
-    const checkExistingProducts = async (products) => {
-        if (!products || products.length === 0) return;
-
-        setCheckingInventory(true);
-        const existingProductIds = new Set();
-
-        try {
-            // Check each product in parallel
-            const checks = products.map(async (product) => {
-                try {
-                    const response = await getVendorProductByMasterProductId(
-                        product._id
-                    );
-                    if (response.success && response.data) {
-                        existingProductIds.add(product._id);
-                    }
-                } catch (error) {
-                    // Ignore 404 errors - means product not in inventory
-                    if (error.response?.status !== 404) {
-                        logger.error(
-                            `Error checking product ${product._id}:`,
-                            error
-                        );
-                    }
-                }
-            });
-
-            await Promise.all(checks);
-            setExistingProducts(existingProductIds);
-        } catch (error) {
-            logger.error("Error during bulk inventory check:", error);
-        } finally {
-            setCheckingInventory(false);
         }
     };
 
@@ -173,10 +132,15 @@ const ProductSearch = ({ selectedProduct, onProductSelect }) => {
                     limit,
                 };
                 response = await searchProducts(searchQuery, params);
+            } else if (categoryFilter) {
+                // Get products by specific category
+                response = await getProductsByCategory(categoryFilter, {
+                    page,
+                    limit,
+                });
             } else {
-                // Get products by category or all products
+                // Get all products
                 const params = {
-                    ...(categoryFilter && { category: categoryFilter }),
                     page,
                     limit,
                 };
@@ -197,9 +161,6 @@ const ProductSearch = ({ selectedProduct, onProductSelect }) => {
                     hasNextPage: response.data.pagination?.hasNextPage || false,
                     hasPrevPage: response.data.pagination?.hasPrevPage || false,
                 });
-
-                // Check which products are already in inventory
-                checkExistingProducts(products);
 
                 if (products.length === 0) {
                     setError("No products found matching your criteria");
@@ -228,7 +189,7 @@ const ProductSearch = ({ selectedProduct, onProductSelect }) => {
 
     const ProductRow = ({ product }) => {
         const isSelected = selectedProduct?._id === product._id;
-        const isInInventory = existingProducts.has(product._id);
+        const [isInInventory, setIsInInventory] = useState(false);
         const [localChecking, setLocalChecking] = useState(false);
 
         const handleProductSelect = async (e) => {
@@ -236,16 +197,15 @@ const ProductSearch = ({ selectedProduct, onProductSelect }) => {
             e.stopPropagation();
 
             // Prevent selection if product is already in inventory
-            if (isInInventory) {
-                alert(
-                    "This product is already in your inventory. You cannot add it again."
-                );
-                return;
-            }
+            // if (isInInventory) {
+            //     alert(
+            //         "This product is already in your inventory. You cannot add it again."
+            //     );
+            //     return;
+            // }
 
             // Don't select if already selected - allow deselection by clicking again
             if (isSelected) {
-                console.log("Product deselected:", product.name);
                 onProductSelect(null);
                 return;
             }
@@ -259,26 +219,23 @@ const ProductSearch = ({ selectedProduct, onProductSelect }) => {
 
                 if (response.success && response.data) {
                     // Product already exists in inventory
-                    setExistingProducts(
-                        (prev) => new Set([...prev, product._id])
-                    );
-                    alert(
-                        "This product is already in your inventory. You cannot add it again."
-                    );
+                    setIsInInventory(true);
+                    // alert(
+                    //     "This product is already in your inventory. You cannot add it again."
+                    // );
                 } else {
                     // Product doesn't exist, safe to select
-                    console.log("Product selected:", product.name, product);
                     onProductSelect(product);
                 }
             } catch (error) {
-                logger.error("Error checking product in inventory:", error);
-                // On error, allow selection but warn user
-                console.log(
-                    "Product selected with warning:",
-                    product.name,
-                    product
-                );
-                onProductSelect(product);
+                if (error.response?.status === 404) {
+                    // Product not found in inventory, safe to select
+                    onProductSelect(product);
+                } else {
+                    logger.error("Error checking product in inventory:", error);
+                    // On other errors, allow selection but warn user
+                    onProductSelect(product);
+                }
             } finally {
                 setLocalChecking(false);
             }
@@ -479,17 +436,6 @@ const ProductSearch = ({ selectedProduct, onProductSelect }) => {
             {/* Search Results */}
             {searchResults.length > 0 && (
                 <div className="max-w-full overflow-hidden">
-                    {/* Inventory checking indicator */}
-                    {checkingInventory && (
-                        <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                            <div className="flex items-center text-sm text-blue-700">
-                                <div className="animate-spin w-4 h-4 mr-2 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                                Checking which products are already in your
-                                inventory...
-                            </div>
-                        </div>
-                    )}
-
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-3 sm:mb-4">
                         <h4 className="text-sm sm:text-md font-medium text-text-primary">
                             {searchTerm.trim()

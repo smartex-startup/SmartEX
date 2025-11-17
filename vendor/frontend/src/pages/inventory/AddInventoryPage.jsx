@@ -252,7 +252,6 @@ const AddInventoryPage = () => {
 
             await addProduct(submissionData);
 
-            console.log("Product added to inventory successfully!");
             navigate("/inventory");
         } catch (error) {
             console.error("Error adding to inventory:", error);

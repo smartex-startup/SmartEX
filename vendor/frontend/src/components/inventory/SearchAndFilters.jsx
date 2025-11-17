@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     FaSpinner,
     FaSearch,
@@ -8,9 +8,14 @@ import {
     FaChevronUp,
 } from "react-icons/fa";
 import { useInventory } from "../../context/InventoryContext.jsx";
+import { getCategories } from "../../api/products.api.js";
+import logger from "../../utils/logger.util.js";
 
 const SearchAndFilters = () => {
     const { filters, applyFilters, clearFilters, loading } = useInventory();
+
+    // State for categories
+    const [categories, setCategories] = useState([]);
 
     // Toggle for filters section
     const [showFilters, setShowFilters] = useState(false);
@@ -40,6 +45,21 @@ const SearchAndFilters = () => {
             sortOrder: filters.sortOrder || "asc",
         });
     }, [filters]);
+
+    // Load categories on component mount
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const response = await getCategories();
+                if (response.success) {
+                    setCategories(response.data || []);
+                }
+            } catch (err) {
+                logger.error("Failed to load categories:", err);
+            }
+        };
+        loadCategories();
+    }, []);
 
     // Handle form input changes
     const handleInputChange = (name, value) => {
@@ -195,24 +215,14 @@ const SearchAndFilters = () => {
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                                 >
                                     <option value="">All Categories</option>
-                                    <option value="Electronics">
-                                        Electronics
-                                    </option>
-                                    <option value="Clothing">Clothing</option>
-                                    <option value="Home & Garden">
-                                        Home & Garden
-                                    </option>
-                                    <option value="Sports">Sports</option>
-                                    <option value="Books">Books</option>
-                                    <option value="Food & Beverages">
-                                        Food & Beverages
-                                    </option>
-                                    <option value="Health & Beauty">
-                                        Health & Beauty
-                                    </option>
-                                    <option value="Automotive">
-                                        Automotive
-                                    </option>
+                                    {categories.map((category) => (
+                                        <option
+                                            key={category._id}
+                                            value={category._id}
+                                        >
+                                            {category.name}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 
