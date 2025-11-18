@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import InventoryPage from "./pages/inventory/InventoryPage.jsx";
 import AddInventoryPage from "./pages/inventory/AddInventoryPage.jsx";
 import ProductDetailPage from "./pages/inventory/ProductDetailPage.jsx";
+import EditProductPage from "./pages/inventory/EditProductPage.jsx";
 import LowStockPage from "./pages/inventory/LowStockPage.jsx";
 import NearExpiryPage from "./pages/inventory/NearExpiryPage.jsx";
 import ExpiredPage from "./pages/inventory/ExpiredPage.jsx";
@@ -48,6 +49,10 @@ const App = () => {
                                     <Route
                                         path="/inventory/:vendorProductId"
                                         element={<ProductDetailPage />}
+                                    />
+                                    <Route
+                                        path="/inventory/:vendorProductId/edit"
+                                        element={<EditProductPage />}
                                     />
                                     <Route
                                         path="/inventory/low-stock"
