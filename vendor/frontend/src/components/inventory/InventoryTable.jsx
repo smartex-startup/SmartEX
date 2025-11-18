@@ -1,14 +1,29 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaBox, FaEdit, FaEye, FaImage, FaPlus } from "react-icons/fa";
 import { useInventory } from "../../context/InventoryContext.jsx";
 import InventoryTableSkeleton from "./InventoryTableSkeleton.jsx";
 
 const InventoryTable = () => {
     const { inventory, loading, summary, filters } = useInventory();
+    const navigate = useNavigate();
 
     // Ensure inventory is always an array
     const inventoryItems = Array.isArray(inventory) ? inventory : [];
+
+    const handleRowClick = (vendorProductId) => {
+        navigate(`/inventory/${vendorProductId}`);
+    };
+
+    const handleEdit = (e, vendorProductId) => {
+        e.stopPropagation(); // Prevent row click
+        navigate(`/inventory/${vendorProductId}/edit`);
+    };
+
+    const handleView = (e, vendorProductId) => {
+        e.stopPropagation(); // Prevent row click
+        navigate(`/inventory/${vendorProductId}`);
+    };
 
     // Status badge component
     const StatusBadge = ({ status }) => {
@@ -213,7 +228,8 @@ const InventoryTable = () => {
                     inventoryItems.map((item) => (
                         <div
                             key={item._id}
-                            className="grid grid-cols-12 gap-4 p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors"
+                            onClick={() => handleRowClick(item._id)}
+                            className="grid grid-cols-12 gap-4 p-4 border-b border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
                         >
                             {/* Product Info */}
                             <div className="col-span-4 flex items-center space-x-3">
@@ -251,7 +267,7 @@ const InventoryTable = () => {
                             {/* Category */}
                             <div className="col-span-2 flex items-center">
                                 <span className="text-sm text-text-secondary">
-                                    {item?.category.name || "-"}
+                                    {item.category?.name || "-"}
                                 </span>
                             </div>
 
@@ -285,10 +301,18 @@ const InventoryTable = () => {
                             {/* Actions */}
                             <div className="col-span-1 flex items-center">
                                 <div className="flex items-center space-x-1">
-                                    <button className="p-1 text-text-quaternary hover:text-primary transition-colors">
+                                    <button
+                                        onClick={(e) => handleEdit(e, item._id)}
+                                        className="p-1 text-text-quaternary hover:text-primary transition-colors"
+                                        title="Edit Product"
+                                    >
                                         <FaEdit className="w-4 h-4" />
                                     </button>
-                                    <button className="p-1 text-text-quaternary hover:text-primary transition-colors">
+                                    <button
+                                        onClick={(e) => handleView(e, item._id)}
+                                        className="p-1 text-text-quaternary hover:text-primary transition-colors"
+                                        title="View Details"
+                                    >
                                         <FaEye className="w-4 h-4" />
                                     </button>
                                 </div>

@@ -593,7 +593,14 @@ const fetchSingleProduct = async (vendorProductId, userId) => {
             _id: vendorProductId,
             vendor: vendor._id,
         })
-            .populate("product", "name brand category images description")
+            .populate({
+                path: "product",
+                select: "name brand description images basePrice specifications barcodes hsn tags requiresPrescription variants",
+                populate: {
+                    path: "category",
+                    select: "name description icon",
+                },
+            })
             .populate("vendor", "businessName storeDetails");
 
         if (!vendorProduct) {
