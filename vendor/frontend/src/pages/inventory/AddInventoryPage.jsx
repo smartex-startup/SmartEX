@@ -273,7 +273,7 @@ const AddInventoryPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-background px-2 sm:px-4 lg:px-6 py-4 space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
+        <div className="min-h-screen bg-background space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
             {/* Header */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6 max-w-full">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
