@@ -44,8 +44,6 @@ const getInventory = async (req, res) => {
             sortOrder: sortOrder === "desc" ? "desc" : "asc",
         };
 
-        logger.info("Get inventory with filters:", filters);
-
         const inventory = await fetchVendorInventory(req.user.id, filters);
         return apiResponse.success(
             res,

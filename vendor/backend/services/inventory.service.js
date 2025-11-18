@@ -115,8 +115,6 @@ const fetchVendorInventory = async (userId, filters = {}) => {
             }
         }
 
-        logger.info("MongoDB query:", JSON.stringify(query, null, 2));
-
         // Start building the aggregation pipeline
         let pipeline = [
             { $match: query },
