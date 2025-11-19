@@ -21,6 +21,7 @@ import {
 } from "react-icons/fa";
 
 import { FaArrowTrendUp, FaArrowTrendDown } from "react-icons/fa6";
+import Loader from "../components/common/Loader";
 
 const DashboardPage = () => {
     const { vendor } = useAuth();
@@ -149,24 +150,8 @@ const DashboardPage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div className="animate-pulse space-y-6">
-                        <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {[...Array(4)].map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="bg-white p-6 rounded-lg shadow border border-gray-200 h-32"
-                                ></div>
-                            ))}
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow border border-gray-200 h-96"></div>
-                            <div className="bg-white p-6 rounded-lg shadow border border-gray-200 h-96"></div>
-                        </div>
-                    </div>
-                </div>
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <Loader size="lg" text="Loading..." />
             </div>
         );
     }
