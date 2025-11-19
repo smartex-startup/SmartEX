@@ -228,53 +228,171 @@ vendorProductSchema.index({ "inventory.currentStock": 1 });
 vendorProductSchema.index({ "pricing.finalPrice": 1 });
 vendorProductSchema.index({ "expiryTracking.batches.isNearExpiry": 1 });
 
-// Pre-save middleware to calculate derived fields
-vendorProductSchema.pre("save", function (next) {
-    // Calculate final price
-    const discount =
+// Helper functions for calculations
+function calculatePricing() {
+    // Calculate discount amount
+    const discountAmount =
         (this.pricing.sellingPrice * this.pricing.discountPercentage) / 100;
-    this.pricing.finalPrice = this.pricing.sellingPrice - discount;
 
-    // Calculate margin
+    // Calculate final price after discount
+    this.pricing.finalPrice = Math.max(
+        0,
+        this.pricing.sellingPrice - discountAmount
+    );
+
+    // Calculate margin (profit)
     this.pricing.margin = this.pricing.sellingPrice - this.pricing.costPrice;
 
-    // Calculate available stock
-    this.inventory.availableStock =
-        this.inventory.currentStock - this.inventory.reservedStock;
+    // Calculate margin percentage
+    this.pricing.marginPercentage =
+        this.pricing.sellingPrice > 0
+            ? (this.pricing.margin / this.pricing.sellingPrice) * 100
+            : 0;
+}
 
-    // Update availability status
+function calculateInventory() {
+    // Ensure non-negative values
+    this.inventory.currentStock = Math.max(0, this.inventory.currentStock);
+    this.inventory.reservedStock = Math.max(0, this.inventory.reservedStock);
+
+    // Calculate available stock
+    this.inventory.availableStock = Math.max(
+        0,
+        this.inventory.currentStock - this.inventory.reservedStock
+    );
+
+    // Auto-calculate current stock from batches if expiry tracking is enabled
+    if (
+        this.expiryTracking.hasExpiry &&
+        this.expiryTracking.batches &&
+        this.expiryTracking.batches.length > 0
+    ) {
+        const totalBatchStock = this.expiryTracking.batches.reduce(
+            (sum, batch) => {
+                return sum + Math.max(0, batch.quantity - batch.soldQuantity);
+            },
+            0
+        );
+
+        // Update current stock to match batch totals
+        this.inventory.currentStock = totalBatchStock;
+        this.inventory.availableStock = Math.max(
+            0,
+            this.inventory.currentStock - this.inventory.reservedStock
+        );
+    }
+}
+
+function updateAvailabilityStatus() {
     if (this.inventory.currentStock <= 0) {
         this.availability.isOutOfStock = true;
-        this.availability.availabilityStatus = "out_of_stock";
         this.availability.isAvailable = false;
+        this.availability.availabilityStatus = "out_of_stock";
     } else if (this.inventory.currentStock <= this.inventory.minStockLevel) {
-        this.availability.availabilityStatus = "low_stock";
         this.availability.isOutOfStock = false;
         this.availability.isAvailable = true;
+        this.availability.availabilityStatus = "low_stock";
     } else {
         this.availability.isOutOfStock = false;
-        this.availability.availabilityStatus = "available";
         this.availability.isAvailable = true;
+        this.availability.availabilityStatus = "available";
     }
 
-    // Update batch remaining quantities and expiry status
-    if (this.expiryTracking.batches && this.expiryTracking.batches.length > 0) {
-        this.expiryTracking.batches.forEach((batch) => {
-            // Calculate remaining quantity
-            batch.remainingQuantity = batch.quantity - batch.soldQuantity;
+    // Hide product if setting is enabled and out of stock
+    if (this.settings.hideWhenOutOfStock && this.availability.isOutOfStock) {
+        this.isActive = false;
+    }
+}
 
-            // Update expiry fields using utility (includes daysToExpiry, isExpired, isNearExpiry, nearExpiryDiscount)
-            if (batch.expiryDate) {
-                const updatedBatch = updateBatchExpiryFields(batch);
-                batch.daysToExpiry = updatedBatch.daysToExpiry;
-                batch.isExpired = updatedBatch.isExpired;
-                batch.isNearExpiry = updatedBatch.isNearExpiry;
-                batch.nearExpiryDiscount = updatedBatch.nearExpiryDiscount;
-            }
-        });
+function processBatches() {
+    if (
+        !this.expiryTracking.hasExpiry ||
+        !this.expiryTracking.batches ||
+        this.expiryTracking.batches.length === 0
+    ) {
+        return;
     }
 
-    next();
+    this.expiryTracking.batches.forEach((batch) => {
+        // Ensure valid quantities
+        batch.quantity = Math.max(0, batch.quantity);
+        batch.soldQuantity = Math.max(
+            0,
+            Math.min(batch.soldQuantity, batch.quantity)
+        );
+
+        // Calculate remaining quantity
+        batch.remainingQuantity = batch.quantity - batch.soldQuantity;
+
+        // Update expiry fields using utility
+        if (batch.expiryDate) {
+            const updatedBatch = updateBatchExpiryFields(batch);
+            batch.daysToExpiry = updatedBatch.daysToExpiry;
+            batch.isExpired = updatedBatch.isExpired;
+            batch.isNearExpiry = updatedBatch.isNearExpiry;
+            batch.nearExpiryDiscount = updatedBatch.nearExpiryDiscount;
+        }
+    });
+
+    // Remove expired batches with zero remaining quantity if auto-cleanup is enabled
+    if (this.settings.autoCleanupExpired) {
+        this.expiryTracking.batches = this.expiryTracking.batches.filter(
+            (batch) => !batch.isExpired || batch.remainingQuantity > 0
+        );
+    }
+
+    // Sort batches by expiry date (earliest first)
+    this.expiryTracking.batches.sort((a, b) => {
+        if (!a.expiryDate) return 1;
+        if (!b.expiryDate) return -1;
+        return new Date(a.expiryDate) - new Date(b.expiryDate);
+    });
+}
+
+function validateBusinessRules() {
+    // Ensure min stock is not greater than max stock
+    if (this.inventory.minStockLevel > this.inventory.maxStockLevel) {
+        this.inventory.minStockLevel = this.inventory.maxStockLevel;
+    }
+
+    // Ensure min order quantity is not greater than max order quantity
+    if (this.settings.minOrderQuantity > this.settings.maxOrderQuantity) {
+        this.settings.minOrderQuantity = this.settings.maxOrderQuantity;
+    }
+
+    // Ensure reserved stock doesn't exceed current stock
+    if (this.inventory.reservedStock > this.inventory.currentStock) {
+        this.inventory.reservedStock = this.inventory.currentStock;
+    }
+
+    // Ensure selling price is not less than cost price (warning in margin)
+    if (this.pricing.sellingPrice < this.pricing.costPrice) {
+        this.pricing.hasNegativeMargin = true;
+    } else {
+        this.pricing.hasNegativeMargin = false;
+    }
+
+    // Cap discount percentage at 100%
+    this.pricing.discountPercentage = Math.min(
+        100,
+        Math.max(0, this.pricing.discountPercentage)
+    );
+}
+
+// Main pre-save middleware
+vendorProductSchema.pre("save", function (next) {
+    try {
+        // Execute all calculation and validation functions
+        calculatePricing.call(this);
+        processBatches.call(this);
+        calculateInventory.call(this);
+        updateAvailabilityStatus.call(this);
+        validateBusinessRules.call(this);
+
+        next();
+    } catch (error) {
+        next(error);
+    }
 });
 
 // Method to get effective price (considering near expiry discounts)
@@ -309,6 +427,37 @@ vendorProductSchema.methods.hasNearExpiryStock = function () {
     return this.expiryTracking.batches.some(
         (batch) => batch.isNearExpiry && batch.remainingQuantity > 0
     );
+};
+
+// Method to calculate total value of inventory
+vendorProductSchema.methods.calculateInventoryValue = function () {
+    const costValue = this.inventory.currentStock * this.pricing.costPrice;
+    const sellingValue =
+        this.inventory.currentStock * this.pricing.sellingPrice;
+
+    return {
+        costValue: Math.round(costValue * 100) / 100,
+        sellingValue: Math.round(sellingValue * 100) / 100,
+        potentialProfit: Math.round((sellingValue - costValue) * 100) / 100,
+    };
+};
+
+// Method to get profit margin details
+vendorProductSchema.methods.getProfitAnalysis = function () {
+    const effectivePrice = this.getEffectivePrice();
+    const profit = effectivePrice - this.pricing.costPrice;
+    const profitPercentage =
+        effectivePrice > 0 ? (profit / effectivePrice) * 100 : 0;
+
+    return {
+        costPrice: this.pricing.costPrice,
+        sellingPrice: this.pricing.sellingPrice,
+        effectivePrice: Math.round(effectivePrice * 100) / 100,
+        profit: Math.round(profit * 100) / 100,
+        profitPercentage: Math.round(profitPercentage * 100) / 100,
+        hasNegativeMargin: profit < 0,
+        hasNearExpiryDiscount: this.hasNearExpiryStock(),
+    };
 };
 
 export default mongoose.model("VendorProduct", vendorProductSchema);

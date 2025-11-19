@@ -16,6 +16,7 @@ import connectDB from "./config/db.config.js";
 import authRoutes from "./routes/auth.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
+import bulkOperationsRoutes from "./routes/bulkOperations.routes.js";
 
 // Import scheduled jobs
 import "./scheduled/expiryUpdater.js";
@@ -63,6 +64,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/bulk", bulkOperationsRoutes);
 
 // Global error handler (must be last middleware)
 app.use(errorHandler);
