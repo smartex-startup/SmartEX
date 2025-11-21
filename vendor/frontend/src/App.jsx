@@ -9,6 +9,7 @@ import EditProductPage from "./pages/inventory/EditProductPage.jsx";
 import LowStockPage from "./pages/inventory/LowStockPage.jsx";
 import NearExpiryPage from "./pages/inventory/NearExpiryPage.jsx";
 import ExpiredPage from "./pages/inventory/ExpiredPage.jsx";
+import BulkOperationsPage from "./pages/inventory/BulkOperationsPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import MainLayout from "./components/layout/MainLayout.jsx";
 
@@ -45,6 +46,10 @@ const App = () => {
                                     <Route
                                         path="/inventory/add"
                                         element={<AddInventoryPage />}
+                                    />
+                                    <Route
+                                        path="/inventory/bulk-operations"
+                                        element={<BulkOperationsPage />}
                                     />
                                     <Route
                                         path="/inventory/:vendorProductId"

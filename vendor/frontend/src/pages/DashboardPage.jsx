@@ -349,7 +349,7 @@ const DashboardPage = () => {
                                 <h2 className="text-xl font-semibold text-text-primary mb-6">
                                     Quick Actions
                                 </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <Link
                                         to="/inventory"
                                         className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-blue-50 transition-colors group"
@@ -363,6 +363,23 @@ const DashboardPage = () => {
                                             </h3>
                                             <p className="text-sm text-text-tertiary">
                                                 Update stock and pricing
+                                            </p>
+                                        </div>
+                                    </Link>
+
+                                    <Link
+                                        to="/inventory/bulk-operations"
+                                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-blue-50 transition-colors group"
+                                    >
+                                        <div className="p-3 bg-blue-50 rounded-lg mr-4 group-hover:bg-primary transition-colors">
+                                            <FaClipboardList className="w-5 h-5 text-blue-600 group-hover:text-white" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="font-medium text-text-primary group-hover:text-primary">
+                                                Bulk Operations
+                                            </h3>
+                                            <p className="text-sm text-text-tertiary">
+                                                Upload CSV/Excel files
                                             </p>
                                         </div>
                                     </Link>

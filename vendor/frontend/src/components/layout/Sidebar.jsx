@@ -81,7 +81,8 @@ const Sidebar = () => {
             ),
             submenu: [
                 { name: "All Inventory", path: "/inventory" },
-                { name: "Add to Inventory", path: "/inventory/add" },
+                { name: "Add New to Inventory", path: "/inventory/add" },
+                { name: "Bulk Operations", path: "/inventory/bulk-operations" },
                 { name: "Low Stock", path: "/inventory/low-stock" },
                 { name: "Near Expiry", path: "/inventory/near-expiry" },
                 { name: "Expired Items", path: "/inventory/expired" },
